@@ -5,16 +5,22 @@ from menu import run_menu
 from level_select import run_level_select
 from level1 import run_level1
 
+
 def main():
     pygame.init()  # Inicializar pygame antes de cualquier fuente o pantalla
-    screen = pygame.display.set_mode((1600, 900))
+    screen = pygame.display.set_mode((1540, 785)) #1600 900
     pygame.display.set_caption("Juego del Río")
+
+
 
     # Valores iniciales
     dificultad = "Normal"
     idioma = "Español"
 
     while True:
+
+
+
         # Menú principal
         accion, dificultad, idioma = run_menu(screen, dificultad, idioma)
 
@@ -25,6 +31,7 @@ def main():
             # Solo manejaremos el primer nivel por ahora
             if nivel == "Nivel 1":
                 run_level1(dificultad, idioma, screen)
+            
 
         elif accion == "salir":
             pygame.quit()
