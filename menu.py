@@ -2,14 +2,37 @@
 import pygame
 import sys
 import os
-
+import math
 from settings import config_menu, idioma, dificultad
+from credits import show_credits
 
-# FUNCIÓN: carga todos los frames desde una carpeta
+pygame.mixer.init()
+pygame.mixer.music.load('sonido/inicio_musica.mp3')
+pygame.mixer.music.play(-1)
+pygame.mixer.music.set_volume(0.5)
+
+# 🔊 Cargar sonidos de botones
+try:
+    sonido_seleccion = pygame.mixer.Sound("sonido/boton_selec.mp3")
+    sonido_ejecucion = pygame.mixer.Sound("sonido/boton_ejec.mp3")
+except pygame.error as e:
+    print(f"Error al cargar sonidos de botones: {e}")
+    sonido_seleccion = None
+    sonido_ejecucion = None
+
+# pegar el menú al borde
+LEFT_ALIGN_X = 50
+OVERLAY_COLOR = (0, 0, 0)
+OVERLAY_ALPHA = 100
+BREATH_AMPLITUDE = 5
+BREATH_SPEED = 0.005
+LOGO_BREATH_SPEED_MULTIPLIER = 1.0
+
+
 def cargar_frames_desde_carpeta(carpeta):
     frames = []
     if not os.path.exists(carpeta):
-        print(f"⚠️ Carpeta no encontrada: {carpeta}")
+        print(f" Carpeta no encontrada: {carpeta}")
         return frames
 
     for archivo in sorted(os.listdir(carpeta)):
@@ -17,64 +40,82 @@ def cargar_frames_desde_carpeta(carpeta):
             ruta = os.path.join(carpeta, archivo)
             imagen = pygame.image.load(ruta).convert_alpha()
             frames.append(imagen)
-
-    print(f" {len(frames)} frames cargados desde {carpeta}")
     return frames
 
 
-
-def credits_menu(screen):
-    font = pygame.font.SysFont(None, 40)
-    clock = pygame.time.Clock()
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    return
-
-        screen.fill((255, 255, 255))
-        title = font.render("CRÉDITOS", True, (0,0,0))
-        screen.blit(title, (screen.get_width()//2 - title.get_width()//2, 50))
-
-        text1 = font.render("Juego desarrollado por:", True, (0,0,0))
-        text2 = font.render("Tu Nombre Aquí", True, (200,0,0))
-        screen.blit(text1, (screen.get_width()//2 - text1.get_width()//2, 200))
-        screen.blit(text2, (screen.get_width()//2 - text2.get_width()//2, 260))
-
-        back_text = font.render("Presiona ENTER para volver", True, (0,0,0))
-        screen.blit(back_text, (screen.get_width()//2 - back_text.get_width()//2, 500))
-
-        pygame.display.flip()
-        clock.tick(60)
-
 def run_menu(screen, dificultad, idioma):
+    if not pygame.font.get_init():
+        pygame.font.init()
+
     font = pygame.font.SysFont(None, 48)
     clock = pygame.time.Clock()
     main_menu_options = ["Iniciar Juego", "Configuración", "Créditos", "Salir"]
     selected_option = 0
 
-    # fondo
+    BUTTON_WIDTH = 500
+    BUTTON_HEIGHT = 60
+
+    BUTTON_FILES = {
+        "Iniciar Juego": "img/boton.png",
+        "Configuración": "img/boton2.png",
+        "Créditos": "img/boton4.png",
+        "Salir": "img/boton3.png"
+    }
+
+    BUTTON_SELECTED_FILES = {
+        "Iniciar Juego": "img/boton_selected.png",
+        "Configuración": "img/boton2_selected.png",
+        "Créditos": "img/boton4_selected.png",
+        "Salir": "img/boton3_selected.png"
+    }
+
+    button_images = {}
+    button_selected_images = {}
+
+    for text, path in BUTTON_FILES.items():
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.scale(img, (BUTTON_WIDTH, BUTTON_HEIGHT))
+            button_images[text] = img
+        except pygame.error as e:
+            print(f"Error al cargar la imagen NORMAL del botón '{text}' en {path}: {e}")
+            button_images[text] = None
+
+    for text, path in BUTTON_SELECTED_FILES.items():
+        try:
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.scale(img, (BUTTON_WIDTH, BUTTON_HEIGHT))
+            button_selected_images[text] = img
+        except pygame.error as e:
+            print(f"Advertencia: No se pudo cargar la imagen SELECCIONADA del botón '{text}' en {path}: {e}")
+            button_selected_images[text] = button_images.get(text)
+
     fondo = pygame.image.load("img/fondoinicio.png").convert()
     fondo = pygame.transform.scale(fondo, (screen.get_width(), screen.get_height()))
 
-    # Cargar frames desde tus carpetas reales
-    frames_iniciar = cargar_frames_desde_carpeta("img/frames_iniciar")
-    frames_config = cargar_frames_desde_carpeta("img/frames_configuracion")
-    frames_creditos = cargar_frames_desde_carpeta("img/frames_creditos")
-    frames_salir = cargar_frames_desde_carpeta("img/frames_salir")
+    titulo_img = pygame.image.load("img/logo.png").convert_alpha()
+    titulo_img = pygame.transform.scale(titulo_img, (400, 200))
+    rect_titulo_original = titulo_img.get_rect(topleft=(LEFT_ALIGN_X, 10))
 
-    frame_index = 0
-    frame_timer = 0
+    pibble_cargado = False
+    try:
+        pibble_img_original = pygame.image.load("img/pibble.png").convert_alpha()
+        NEW_HEIGHT = screen.get_height() - 100
+        ratio = pibble_img_original.get_width() / pibble_img_original.get_height()
+        NEW_WIDTH = int(NEW_HEIGHT * ratio)
+        pibble_img_original = pygame.transform.scale(pibble_img_original, (NEW_WIDTH, NEW_HEIGHT))
+        pibble_x_original = screen.get_width() - NEW_WIDTH - 50
+        pibble_y_original = screen.get_height() // 2 - NEW_HEIGHT // 2
+        pibble_rect_original = pibble_img_original.get_rect(topleft=(pibble_x_original, pibble_y_original))
+        pibble_cargado = True
+    except pygame.error:
+        pibble_cargado = False
 
+    overlay = pygame.Surface((screen.get_width(), screen.get_height())).convert_alpha()
+    overlay.fill(OVERLAY_COLOR)
+    overlay.set_alpha(OVERLAY_ALPHA)
 
-    # Cargar la imagen del título
-    titulo_img = pygame.image.load("img/logo.png").convert_alpha()  # PNG transparente
-    # Ajustar tamaño
-    titulo_img = pygame.transform.scale(titulo_img, (600, 300))  # ancho x alto deseado
-
+    current_time = 0
 
     while True:
         for event in pygame.event.get():
@@ -84,68 +125,73 @@ def run_menu(screen, dificultad, idioma):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     selected_option = (selected_option - 1) % len(main_menu_options)
+                    if sonido_seleccion:
+                        sonido_seleccion.play()
                 elif event.key == pygame.K_DOWN:
                     selected_option = (selected_option + 1) % len(main_menu_options)
+                    if sonido_seleccion:
+                        sonido_seleccion.play()
                 elif event.key == pygame.K_RETURN:
+                    if sonido_ejecucion:
+                        sonido_ejecucion.play()
                     opcion = main_menu_options[selected_option]
                     if opcion == "Iniciar Juego":
                         return "jugar", dificultad, idioma
                     elif opcion == "Configuración":
                         config_menu(screen)
                     elif opcion == "Créditos":
-                        credits_menu(screen)
+                        show_credits(screen)
                     elif opcion == "Salir":
                         return "salir", dificultad, idioma
-                    
 
-        #🔁 Animar cada 5 ticks
-        frame_timer += 1
-        if frame_timer >= 5:
-            frame_index = (frame_index + 1) % 1000
-            frame_timer = 0
-
-
-        # Dibujar menú
+        current_time += clock.get_time()
         screen.blit(fondo, (0, 0))
-        rect_titulo = titulo_img.get_rect(center=(screen.get_width()//2, 100))  # posición Y deseada
-        screen.blit(titulo_img, rect_titulo)
+        screen.blit(overlay, (0, 0))
 
-        # Función para mostrar cada botón con su animación
-        def mostrar_boton(frames, texto, y, seleccionado=False, ancho=200, alto=80):   
+        logo_offset = BREATH_AMPLITUDE * math.sin(current_time * BREATH_SPEED * LOGO_BREATH_SPEED_MULTIPLIER)
+        rect_titulo_animado = rect_titulo_original.copy()
+        rect_titulo_animado.y = rect_titulo_original.y + logo_offset
+        screen.blit(titulo_img, rect_titulo_animado)
 
-            if seleccionado:
-                 # Cargar PNG especial para seleccionado
-                 ruta_png = f"img/{texto.lower().replace(' ','_')}_selected.png"
-                 if os.path.exists(ruta_png):
-                     img = pygame.image.load(ruta_png).convert_alpha()
-                     img = pygame.transform.scale(img, (ancho, alto))
-                     rect = img.get_rect(center=(screen.get_width()//2, y))
-                     screen.blit(img, rect)
-                     return  # ya dibujamos, no necesitamos más
+        if pibble_cargado:
+            pibble_offset = BREATH_AMPLITUDE * math.sin(current_time * BREATH_SPEED)
+            pibble_rect_animado = pibble_rect_original.copy()
+            pibble_rect_animado.y = pibble_rect_original.y + pibble_offset
+            screen.blit(pibble_img_original, pibble_rect_animado)
 
-            if frames:
-                # Escalar frame al tamaño deseado
-                img = pygame.transform.scale(frames[frame_index % len(frames)], (ancho, alto))
-                rect = img.get_rect(center=(screen.get_width()//2, y))
+        Y_GAP = 35
+        TOTAL_BUTTONS_HEIGHT = (BUTTON_HEIGHT * 4) + (Y_GAP * 3)
+
+        if pibble_cargado:
+            OFFSET_DOWN = 50
+            BOTONES_Y_INICIO_CENTRO = (pibble_rect_original.centery + OFFSET_DOWN) - TOTAL_BUTTONS_HEIGHT // 2
+            MIN_Y_START = rect_titulo_original.bottom + 30
+            if BOTONES_Y_INICIO_CENTRO < MIN_Y_START:
+                BOTONES_Y_INICIO_CENTRO = MIN_Y_START
+        else:
+            BOTONES_Y_INICIO_CENTRO = rect_titulo_original.bottom + 80
+
+        def mostrar_boton(frames, texto, y, seleccionado=False, ancho=BUTTON_WIDTH, alto=BUTTON_HEIGHT):
+            BUTTON_X = LEFT_ALIGN_X
+            img = button_selected_images.get(texto) if seleccionado else button_images.get(texto)
+            if img:
+                rect = img.get_rect(topleft=(BUTTON_X, y - alto // 2))
                 screen.blit(img, rect)
             else:
-                color = (200,0,0) if texto == main_menu_options[selected_option] else (0,0,0)
+                color = (200, 0, 0) if texto == main_menu_options[selected_option] else (0, 0, 0)
                 text = font.render(texto, True, color)
-                rect = text.get_rect(center=(screen.get_width()//2, y))
+                rect = text.get_rect(center=(BUTTON_X + ancho // 2, y))
                 screen.blit(text, rect)
 
+        Y_1 = BOTONES_Y_INICIO_CENTRO + BUTTON_HEIGHT // 2
+        Y_2 = Y_1 + BUTTON_HEIGHT + Y_GAP
+        Y_3 = Y_2 + BUTTON_HEIGHT + Y_GAP
+        Y_4 = Y_3 + BUTTON_HEIGHT + Y_GAP
 
-        # Mostrar cada botón (posición Y ajustable)
-        mostrar_boton(frames_iniciar, "Iniciar Juego", 250, seleccionado=(selected_option==0))
-        mostrar_boton(frames_config, "Configuración", 350, seleccionado=(selected_option==1))
-        mostrar_boton(frames_creditos, "Créditos", 450, seleccionado=(selected_option==2))
-        mostrar_boton(frames_salir, "Salir", 550, seleccionado=(selected_option==3))
-
-
-       #for i, option in enumerate(main_menu_options):
-       #    color = (200,0,0) if i == selected_option else (0,0,0)
-       #    text = font.render(option, True, color)
-       #    screen.blit(text, (screen.get_width()//2 - text.get_width()//2, 200 + i*60))
+        mostrar_boton(None, "Iniciar Juego", Y_1, seleccionado=(selected_option == 0))
+        mostrar_boton(None, "Configuración", Y_2, seleccionado=(selected_option == 1))
+        mostrar_boton(None, "Créditos", Y_3, seleccionado=(selected_option == 2))
+        mostrar_boton(None, "Salir", Y_4, seleccionado=(selected_option == 3))
 
         pygame.display.flip()
         clock.tick(60)
