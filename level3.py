@@ -1,4 +1,3 @@
-# level3.py
 import pygame
 import sys
 import random
@@ -233,13 +232,12 @@ def show_inspection_screen(screen, item):
                 waiting = False
                 return "continuar"
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                # Retornar "salir" para asegurar compatibilidad con el bucle principal
-                return "salir"
+                return "salir_menu"
     return "continuar"
 
 
 # Función Principal del Nivel 3
-def run_level3(dificultad=None, idioma=None, screen=screen): # Se actualiza la firma para permitir ejecución sin argumentos
+def run_level3(dificultad=None, idioma=None, screen=screen):
 
     METAS_TRITURAR = 5
     contador_triturados = 0
@@ -277,10 +275,11 @@ def run_level3(dificultad=None, idioma=None, screen=screen): # Se actualiza la f
 
                     if accion == "salir_juego":
                         return "salir_juego"
-                    if accion == "reiniciar":
+                    elif accion == "reiniciar":
                         return "reiniciar"
-                    if accion in ["salir", "salir_menu"]:
-                        return "salir"
+                    elif accion in ["salir", "salir_menu"]:
+                        return "salir_menu"
+                    # Si es "reanudar" o cualquier otra cosa, continúa el juego
                     # --------------------------------
 
                 # resto de la lógica de la tecla E 
@@ -355,8 +354,8 @@ def run_level3(dificultad=None, idioma=None, screen=screen): # Se actualiza la f
                                 current_item = None
                             elif accion == "salir_juego":
                                 return "salir_juego"
-                            elif accion == "salir":
-                                return "salir"
+                            elif accion == "salir_menu":
+                                return "salir_menu"
                 elif item.state == 'OUTPUT':
                     pass
 
@@ -455,14 +454,10 @@ if __name__ == '__main__':
          screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 
-    while accion != "salir_juego":
+    while accion not in ["salir_juego", "salir_menu"]:
         
         if accion == "iniciar" or accion == "reiniciar":
             accion = run_level3(screen=screen)
-        
-        elif accion == "salir_menu":
-            # Aquí se asume que volvería al menú principal
-            accion = "salir" 
 
     pygame.quit()
     sys.exit()
