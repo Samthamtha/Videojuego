@@ -1,4 +1,3 @@
-# level2.py
 import pygame
 import sys
 # Asegúrate de que 'pause.py' existe
@@ -23,6 +22,10 @@ AMARILLO_SELECCION = (255, 255, 0)
 AZUL_FONDO = (30, 144, 255)
 NARANJA_TIEMPO = (255, 140, 0)
 ROJO_VIDA = (255, 0, 0)
+
+# --- NUEVOS COLORES PARA EL FLASH DE REPARACIÓN CORRECTA ---
+# RGBA: Verde con 100 de opacidad (aproximadamente 40% visible)
+VERDE_TRANSPARENTE = (0, 200, 0, 100) 
 
 # --- NUEVOS COLORES PARA LOS FONDOS DE LAS HERRAMIENTAS ---
 COLOR_FONDO_HERRAMIENTA = (70, 70, 70) # Un gris oscuro para el fondo de cada herramienta
@@ -97,6 +100,25 @@ REPARACION_ETAPAS = [
     ["Pegamento", "Liga", "Pintura"] # 2. Figura de Madera: Pegamento, Liga, Pintura
 ]
 
+# --- 🖼️ NUEVO: Mapeo de Nombres de Objetos a Rutas de Imagenes ---
+OBJETO_IMAGENES = {
+    "Osito de Peluche Roto": {
+        "roto": "img/oso_R.png",
+        "reparado": "img/oso_N.png"
+    },
+    "Silla Rota": {
+        "roto": "img/silla_R.png",
+        "reparado": "img/silla_N.png"
+    },
+    "Figura de Madera Rota": {
+        "roto": "img/figura_maderaR.png",
+        # El nombre del archivo reparado es diferente aquí:
+        "reparado": "img/figura_madera.png" 
+    }
+}
+
+OBJETOS_IMGS_LOADED = {} # Diccionario para almacenar las superficies de imagen cargadas y escaladas
+
 
 # Clase Herramienta
 class Herramienta(pygame.sprite.Sprite):
@@ -145,8 +167,30 @@ except pygame.error as e:
 
 
 # Función principal del Nivel 2
-def run_level2():
-    global ANCHO, ALTO, screen, fuente, clock, FPS, FONDO_NIVEL2
+def run_level2(dificultad, idioma, screen): # Añadidas variables predeterminadas para __main__
+    global ANCHO, ALTO, fuente, clock, FPS, FONDO_NIVEL2, OBJETO_IMAGENES, OBJETOS_IMGS_LOADED
+
+    # -----------------------------------------------------------------------------------
+    # --- NUEVA LÓGICA: CARGAR Y ESCALAR IMÁGENES DE OBJETOS ---
+    if not OBJETOS_IMGS_LOADED:
+        # Usaremos un tamaño estándar de 300x300 para el objeto
+        OBJETO_DISPLAY_SIZE = (300, 300)
+        
+        for obj_name, paths in OBJETO_IMAGENES.items():
+            OBJETOS_IMGS_LOADED[obj_name] = {}
+            for state, path in paths.items():
+                try:
+                    # Usamos .convert_alpha() ya que son PNG
+                    img = pygame.image.load(path).convert_alpha() 
+                    img = pygame.transform.scale(img, OBJETO_DISPLAY_SIZE)
+                    OBJETOS_IMGS_LOADED[obj_name][state] = img
+                except pygame.error as e:
+                    print(f"ERROR: No se pudo cargar la imagen del objeto '{path}'. {e}")
+                    # Crea un cuadrado de color de respaldo si falla
+                    fallback_surface = pygame.Surface(OBJETO_DISPLAY_SIZE, pygame.SRCALPHA)
+                    fallback_surface.fill(ROJO_ROTO if state == "roto" else VERDE_REPARACION)
+                    OBJETOS_IMGS_LOADED[obj_name][state] = fallback_surface
+    # -----------------------------------------------------------------------------------
 
     #Variables de Estado del Juego
     vidas = 3
@@ -163,6 +207,9 @@ def run_level2():
     # --- TEMPORIZADOR PARA MOSTRAR EL OBJETO REPARADO (4 segundos) ---
     objeto_reparado_timer = 0.0 
     
+    # --- NUEVA VARIABLE PARA EL FLASH DE ÉXITO ---
+    success_flash_timer = 0.0 # Temporizador para el flash verde de herramienta correcta (0.5 segundos)
+
     juego_finalizado = False
     
     # Usar las constantes definidas globalmente para el tamaño de la herramienta
@@ -202,8 +249,7 @@ def run_level2():
             
         herramientas_list.append(Herramienta(x, y, tool_ancho, tool_alto, nombre))
 
-    # Área de visualización del objeto (Central)
-    objeto_roto_rect = pygame.Rect(ANCHO // 2 - 150, ALTO // 2 - 150, 300, 300) 
+    # Área de visualización del objeto (Central) - Se recalcula en el loop de dibujo
     
     index_seleccionado = 0
     herramientas_list[index_seleccionado].seleccionada = True
@@ -216,6 +262,12 @@ def run_level2():
         
         #Lógica de Tiempo y Fin de Juego
         if not juego_finalizado:
+            
+            # Decrementar el flash de éxito
+            if success_flash_timer > 0:
+                success_flash_timer -= delta_time
+                if success_flash_timer < 0:
+                    success_flash_timer = 0.0
             
             # <<<< MODIFICADO POR PAUSA DE TIEMPO >>>>
             # Solo decrementa el tiempo restante si NO estamos en la pausa de objeto reparado
@@ -245,14 +297,14 @@ def run_level2():
                     etapa_actual = 0 # Reiniciar etapa para el nuevo objeto
                     
                     if objeto_actual_index >= len(OBJETOS):
-                          # ¡NIVEL TERMINADO!
-                          juego_finalizado = True
-                          mensaje_feedback = "¡NIVEL COMPLETADO! "
-                          mensaje_timer = 3.0
+                            # ¡NIVEL TERMINADO!
+                            juego_finalizado = True
+                            mensaje_feedback = "¡NIVEL COMPLETADO! "
+                            mensaje_timer = 3.0
                     else:
-                          # Mensaje de transición al nuevo objeto
-                          mensaje_feedback = f"Continúa con: {OBJETOS[objeto_actual_index]}"
-                          mensaje_timer = 2.0 
+                            # Mensaje de transición al nuevo objeto
+                            mensaje_feedback = f"Continúa con: {OBJETOS[objeto_actual_index]}"
+                            mensaje_timer = 2.0 
             
             if vidas <= 0 and not juego_finalizado:
                 juego_finalizado = True
@@ -328,9 +380,11 @@ def run_level2():
                                 # HERRAMIENTA CORRECTA: AVANZA A LA SIGUIENTE ETAPA
                                 etapa_actual += 1
                                 
+                                # --- INICIA EL FLASH VERDE DE ÉXITO ---
+                                success_flash_timer = 0.5 
+                                
                                 if etapa_actual >= len(herramientas_necesarias):
                                     # OBJETO REPARADO COMPLETAMENTE: INICIAR TEMPORIZADOR DE 4 SEGUNDOS
-                                    
                                     objeto_reparado_timer = 4.0 
                                     
                                     mensaje_feedback = "¡OBJETO REPARADO! Esperando 4 segundos..."
@@ -364,8 +418,13 @@ def run_level2():
         area_trabajo_surface.fill((*GRIS_CLARO, 180)) # Color gris claro con 180 de opacidad (0-255)
         area_trabajo_rect = area_trabajo_surface.get_rect(topleft=(ANCHO // 4, ALTO // 8))
         screen.blit(area_trabajo_surface, area_trabajo_rect.topleft)
-        # Ahora el objeto_roto_rect se calcula en base al área de trabajo para que esté centrado
-        objeto_roto_rect = pygame.Rect(area_trabajo_rect.centerx - 150, area_trabajo_rect.centery - 150, 300, 300) 
+        
+        # Recalcular objeto_roto_rect centrado en el área de trabajo
+        objeto_display_size = (300, 300)
+        objeto_roto_rect = pygame.Rect(area_trabajo_rect.centerx - objeto_display_size[0] // 2, 
+                                       area_trabajo_rect.centery - objeto_display_size[1] // 2, 
+                                       objeto_display_size[0], objeto_display_size[1])
+
         
         # Dibujar Título
         texto_titulo = fuente.render("Nivel 2: VAMOS A REPARAR", True, BLANCO)
@@ -389,12 +448,9 @@ def run_level2():
         #fontenido de la barra (progreso)
         progreso_ancho = int((tiempo_restante / tiempo_total) * BARRA_TIEMPO_ANCHO)
         
-        # <<<< MODIFICADO POR PAUSA DE TIEMPO >>>>
-        # Si el tiempo está detenido, aseguramos que la barra refleje el tiempo_restante sin decrecer
+        # Si el juego está en pausa por reparación, la barra se mantiene
         if objeto_reparado_timer > 0.0 and tiempo_restante > 0:
-              # Si el juego está en pausa, aseguramos que la barra se mantiene
               progreso_ancho = int((tiempo_restante / tiempo_total) * BARRA_TIEMPO_ANCHO)
-        # <<<< MODIFICADO POR PAUSA DE TIEMPO >>>>
 
         pygame.draw.rect(screen, NARANJA_TIEMPO, (x_barra_tiempo, y_barra_tiempo, progreso_ancho, BARRA_TIEMPO_ALTO))
         
@@ -440,19 +496,15 @@ def run_level2():
                 img_pista_x = x_pista + CAJA_PISTA_ANCHO // 2 - scaled_img.get_width() // 2
                 img_pista_y = y_pista + 50 # Un poco más abajo que el título
                 screen.blit(scaled_img, (img_pista_x, img_pista_y))
-                
-                # Si quieres, puedes omitir el texto de la pista si la imagen ya lo representa
-                # texto_pista_contenido = fuente.render(pista_tool_nombre, True, ROJO_ROTO)
-                # screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
             else:
                 # Si no hay imagen (ej. Liga, o si falla la carga), mostrar solo el texto
                 texto_pista_contenido = fuente.render(pista_tool_nombre, True, ROJO_ROTO)
                 screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
             
         elif objeto_reparado_timer > 0.0:
-              # Muestra la pista de "REPARADO" durante la pausa
-              texto_pista_contenido = fuente.render("REPARADO", True, VERDE_REPARACION)
-              screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
+            # Muestra la pista de "REPARADO" durante la pausa
+            texto_pista_contenido = fuente.render("REPARADO", True, VERDE_REPARACION)
+            screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
         else:
             # mensaje cuando el juego finaliza o se completa
             texto_pista_contenido = pygame.font.Font(None, 30).render("FIN DEL JUEGO", True, ROJO_ROTO)
@@ -475,16 +527,34 @@ def run_level2():
             # Posiciona el texto del nombre en la parte superior izquierda de la casilla de la herramienta
             screen.blit(texto_nombre, (herramienta.rect.x + 5, herramienta.rect.y + 5))
 
-        # mostrar Objeto Roto / Reparado 
-        
-        if juego_finalizado or objeto_actual_index >= len(OBJETOS) or objeto_reparado_timer > 0.0:
-            color_objeto = VERDE_REPARACION # Verde si ya terminó, el nivel se completó, o si está en el temporizador
-        elif etapa_actual > 0:
-            color_objeto = VERDE_REPARACION # Verde si ya se usó al menos una herramienta correcta
-        else:
-            color_objeto = ROJO_ROTO # Rojo si está en la primera etapa
+        # --- DIBUJAR OBJETO ROTO / REPARADO (Nueva Lógica de Imágenes) ---
+        if objeto_actual_index < len(OBJETOS) and OBJETOS[objeto_actual_index] in OBJETO_IMAGENES:
+            objeto_actual_nombre = OBJETOS[objeto_actual_index]
             
-        pygame.draw.rect(screen, color_objeto, objeto_roto_rect, 0)
+            # 1. Determinar qué imagen usar: Reparada o Rota
+            if objeto_reparado_timer > 0.0:
+                # Si está en pausa, mostrar la versión reparada
+                image_key = "reparado"
+            elif juego_finalizado and objeto_actual_index == len(OBJETOS) - 1:
+                # Si es el último objeto y el juego finalizó (completado), mostrar reparado
+                image_key = "reparado"
+            else:
+                # En cualquier otro caso, mostrar la versión rota/en progreso
+                image_key = "roto"
+                
+            img_to_draw = OBJETOS_IMGS_LOADED[objeto_actual_nombre][image_key]
+            screen.blit(img_to_draw, objeto_roto_rect.topleft)
+        # ----------------------------------------------------------------------------------
+
+        # --- DIBUJAR FLASH DE REPARACIÓN CORRECTA (Verde Transparente) ---
+        if success_flash_timer > 0.0:
+            # Crear una superficie transparente para el flash
+            flash_surface = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
+            # Dibujar el color verde transparente sobre toda la pantalla
+            flash_surface.fill(VERDE_TRANSPARENTE) 
+            # Blitear la superficie del flash sobre la pantalla
+            screen.blit(flash_surface, (0, 0))
+        # ----------------------------------------------------------------------------------
         
         # Mensaje de estado que esta situado en la parte inferior central
         estado_texto = ""
@@ -518,7 +588,8 @@ if __name__ == '__main__':
     while accion != "salir_juego":
         
         if accion == "iniciar" or accion == "reiniciar":
-            accion = run_level2()
+            # Pasamos los argumentos requeridos por run_level2 aunque sean dummy en __main__
+            accion = run_level2(dificultad=1, idioma="es", screen=screen)
         
         elif accion == "salir_menu":
             # Aquí se asume que volvería al menú principal
