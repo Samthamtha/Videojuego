@@ -7,11 +7,13 @@
 Un videojuego educativo 2D diseñado para niños y niñas de **6 a 12 años**. El proyecto se centra en enseñar los principios del **Objetivo de Desarrollo Sostenible (ODS) 12: Producción y Consumo Responsables**, utilizando como base las **7R** (Rediseñar, Reducir, Reutilizar, Reparar, Renovar, Recuperar y Reciclar.).
 El objetivo es concienciar sobre la gestión de residuos y el consumo responsable de una manera divertida, interactiva y, sobre todo, adaptada a sus edades.
 
+![Imagen de WhatsApp 2025-11-12 a las 07 43 35_fe79cd7c](https://github.com/user-attachments/assets/f83fde9f-4c65-48b6-8795-67a5878ecc8a)
+
 ---
 
 ## ✨ Características Principales
 
-* **Público Adaptativo:** El juego incluye **3 niveles de dificultad** (Fácil, Normal, Difícil). Esta configuración ajusta la velocidad y complejidad de los minijuegos para adaptarse al rango de edad de 6 a 12 años.
+* **Público Adaptativo:** El juego incluye **3 etapas de dificultad** (Principiante, Intermedio, Avanzado). Esta configuración ajusta la velocidad y complejidad de los minijuegos para adaptarse al rango de edad de 6 a 12 años.
 * **Menú de Opciones:** Un menú de configuración completo que permite al jugador:
     * Ajustar el **Volumen** (Música y Efectos de Sonido).
     * Seleccionar la **Dificultad**.
@@ -32,6 +34,9 @@ En este nivel, el jugador debe limpiar un río clasificando la basura que cae.
 * **Reglas:**
     * Cada basura errada (colocada en el bote incorrecto) resta puntos.
     * **¡Giro clave!** Cuando un bote de basura se completa (alcanza su meta), se bloquea, deja de moverse y ya no suma más puntos. Esto incrementa el desafío al forzar al jugador a gestionar los contenedores restantes.
+* **Esenario para la etapa 1:**
+
+![Texto alternativo](img/rio.png)
 
 ### Nivel 2: El Taller de Reparaciones (Reparar / Renovar / Recuperar))
 
@@ -103,25 +108,9 @@ Sugerencias
 
 ## 💻 Tecnologías Propuestas
 
-* **Motor de Videojuego:** Godot Engine
-* **Lenguaje de Programación:** GDScript
-* **Software de Gráficos:** Krita / Aseprite
-* **Software de Audio:** Audacity
-
-## 🚀 Instalación y Ejecución
-
-Para ejecutar este proyecto localmente, sigue estos pasos:
-
-1.  Clona el repositorio:
-    ```bash
-    git clone [https://github.com/tu-usuario/ecoguardianes.git](https://github.com/tu-usuario/ecoguardianes.git)
-    ```
-2.  Navega a la carpeta del proyecto:
-    ```bash
-    cd ecoguardianes
-    ```
-3.  Abre el proyecto usando el ejecutable de **Godot Engine** (versión 4.x recomendada).
-4.  Desde el editor de Godot, presiona "Ejecutar Proyecto" (F5).
+* **Lenguaje de Programación:** Python
+* **Diseño de Gráficos:** Libresprite
+* **Libreria:** Pygame
 
 ## 📄 Licencia
 
