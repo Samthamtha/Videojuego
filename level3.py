@@ -1,4 +1,4 @@
-# level3.py - Solución Final para manejar correctamente 'Salir al Menú Principal'
+# level3.py
 import pygame
 import sys
 import random
@@ -11,7 +11,7 @@ except ImportError:
         print("ADVERTENCIA: 'pause.py' no encontrado. Presiona cualquier tecla para reanudar.")
         pygame.time.wait(500)
         return "reanudar"
-# ----------------------------------------------------
+
 
 
 pygame.init()
@@ -21,7 +21,20 @@ pygame.display.set_caption("Nivel 3 - Fábrica de Reciclaje (Simulación)")
 clock = pygame.time.Clock()
 FPS = 60
 
-# --- COLORES Y FUENTES (Sin cambios) ---
+
+#CARGA DE IMAGEN DE FONDO 
+try:
+    # Carga la imagen de fondo y la escala al tamaño de la pantalla
+    BACKGROUND_IMAGE = pygame.image.load("img/fondo_nivel3.png").convert()
+    BACKGROUND_IMAGE = pygame.transform.scale(BACKGROUND_IMAGE, (WIDTH, HEIGHT))
+    USE_BACKGROUND_IMAGE = True
+except pygame.error as e:
+    print(f"Advertencia: No se pudo cargar la imagen de fondo: {e}")
+    # Si la carga falla, se usará el color de fondo simple
+    USE_BACKGROUND_IMAGE = False
+
+
+# COLORES Y FUENTES 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 DARK_GRAY = (50, 50, 50)
@@ -38,7 +51,7 @@ font = pygame.font.SysFont(None, 36)
 font_large = pygame.font.SysFont(None, 48)
 font_small = pygame.font.SysFont(None, 24)
 
-# --- CONFIGURACIÓN DE POSICIONES Y SPRITES (Sin cambios) ---
+# CONFIGURACIÓN DE POSICIONES Y SPRITES
 ITEM_SIZE = 80
 CONVEYOR_SPEED = 2.5
 TRANSFORM_TIME = 2000
@@ -61,7 +74,7 @@ OUTPUT_ITEM_STACK_OFFSET = 20
 TRANSFORM_BOX_X_CENTERED = WIDTH // 2 - 50
 TRANSFORM_BOX_W = CONVEYOR_HEIGHT + 20
 
-# --- CLASE Particle (Sin cambios) ---
+# CLASE Particle
 class Particle:
     def __init__(self, x, y, color):
         super().__init__()
@@ -84,7 +97,7 @@ class Particle:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size)
 
 
-# --- FUNCIONES DE IMÁGENES Y DATOS (Sin cambios) ---
+#FUNCIONES DE IMÁGENES Y DATOS
 def create_item_sprite(color, size, shape='rect'):
     surface = pygame.Surface((size, size), pygame.SRCALPHA)
     if shape == 'rect':
@@ -116,7 +129,11 @@ for name, data in TRANSFORM_DATA.items():
     IMAGES[name + '_FINAL_PEQUE'] = create_item_sprite(data['color_final'], ITEM_SIZE, 'rect')
 
 
-# --- CLASES Item y ConveyorBelt (Sin cambios significativos en lógica) ---
+
+
+
+
+# CLASES Item y ConveyorBelt 
 
 class Item(pygame.sprite.Sprite):
     def __init__(self, tipo, state, x, y):
@@ -178,9 +195,9 @@ class ConveyorBelt:
             pygame.draw.line(surface, line_color, (x, self.y + 5), (x, self.y + self.height - 5), 2)
 
 
-# --- Función de Inspección y Mensaje (AJUSTE MÍNIMO) ---
+# Función de Inspección y Mensaje
 def show_inspection_screen(screen, item):
-    # ... (código de renderizado sin cambios) ...
+    # código de renderizado
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
     screen.blit(overlay, (0, 0))
@@ -205,7 +222,7 @@ def show_inspection_screen(screen, item):
     screen.blit(text_continue, (box_rect.centerx - text_continue.get_width() // 2, box_rect.bottom - 40))
 
     pygame.display.flip()
-    # ... (fin del código de renderizado) ...
+    # fin del código de renderizado
 
     waiting = True
     while waiting:
@@ -216,13 +233,13 @@ def show_inspection_screen(screen, item):
                 waiting = False
                 return "continuar"
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                # Retornar "salir" para asegurar compatibilidad con tu bucle principal
+                # Retornar "salir" para asegurar compatibilidad con el bucle principal
                 return "salir"
     return "continuar"
 
 
-# --- Función Principal del Nivel 3 (LA CORRECCIÓN CRÍTICA ESTÁ AQUÍ) ---
-def run_level3(dificultad, idioma, screen):
+# Función Principal del Nivel 3
+def run_level3(dificultad=None, idioma=None, screen=screen): # Se actualiza la firma para permitir ejecución sin argumentos
 
     METAS_TRITURAR = 5
     contador_triturados = 0
@@ -255,22 +272,20 @@ def run_level3(dificultad, idioma, screen):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pygame.event.clear()
-                    # --- Manejo del menú de pausa ---
+                    # Manejo del menú de pausa
                     accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
 
                     if accion == "salir_juego":
                         return "salir_juego"
                     if accion == "reiniciar":
                         return "reiniciar"
-                    # <<<<< LA CORRECCIÓN CLAVE >>>>>
-                    # Aceptamos tanto "salir" (compatibilidad) como "salir_menu" (más explícito)
-                    if accion in ["salir", "salir"]:
+                    if accion in ["salir", "salir_menu"]:
                         return "salir"
                     # --------------------------------
 
-                # ... (resto de la lógica de la tecla E sin cambios)
+                # resto de la lógica de la tecla E 
                 if not juego_finalizado and event.key == pygame.K_e and current_item:
-                    # 1. TRITURACIÓN INTERACTIVA (Fase ORIG)
+                    # TRITURACIÓN INTERACTIVA
                     if current_item.state == 'ORIG' and not is_grinding:
                         if current_item.rect.right >= GRINDER_STOP_X:
                             is_grinding = True
@@ -288,10 +303,10 @@ def run_level3(dificultad, idioma, screen):
                             is_transforming = True
                             transform_start_time = pygame.time.get_ticks()
 
-        # --- Lógica de Movimiento y Estados (sin cambios) ---
+        # Lógica de Movimiento y Estados
         if not juego_finalizado:
 
-            # 1. Generación (Spawn)
+            #Generación (Spawn)
             if not current_item and not is_grinding and not is_transforming and spawn_timer >= spawn_rate:
                 tipo = random.choice(TRANSFORM_TYPES)
                 new_item = Item(tipo, 'ORIG', -ITEM_SIZE, 0)
@@ -302,7 +317,7 @@ def run_level3(dificultad, idioma, screen):
 
             spawn_timer += 1
 
-            # 2. Movimiento y Lógica de Fases
+            # Movimiento y Lógica de Fases
             for item in all_items:
                 if item.state == 'ORIG':
                     if not is_grinding:
@@ -345,7 +360,7 @@ def run_level3(dificultad, idioma, screen):
                 elif item.state == 'OUTPUT':
                     pass
 
-            # 3. Lógica de Trituración (Animación y transición)
+            # Lógica de Trituración (Animación y transición)
             if is_grinding:
                 elapsed_time = pygame.time.get_ticks() - grind_start_time
                 if elapsed_time >= GRIND_TIME:
@@ -353,14 +368,18 @@ def run_level3(dificultad, idioma, screen):
                     current_item.triturar()
                     contador_triturados += 1
 
-            # 4. Actualizar partículas
+            # Actualizar partículas
             particles = [p for p in particles if p.lifetime > 0]
             for p in particles:
                 p.update()
 
 
-        # === Dibujo y Renderizado (sin cambios) ===
-        screen.fill(DARK_GRAY)
+        # Dibujo y Renderizado (MODIFICADO AQUÍ PARA EL FONDO)
+        if USE_BACKGROUND_IMAGE:
+            screen.blit(BACKGROUND_IMAGE, (0, 0))
+        else:
+            screen.fill(DARK_GRAY) # Fondo de color si la imagen falla
+
         meta_text = font_large.render(f"OBJETOS TRITURADOS: {contador_triturados}/{METAS_TRITURAR}", True, YELLOW)
         meta_rect = meta_text.get_rect(center=(WIDTH // 2, 50))
         pygame.draw.rect(screen, BLACK, (meta_rect.x - 20, meta_rect.y - 10, meta_rect.width + 40, meta_rect.height + 20), 0, 5)
@@ -429,10 +448,17 @@ def run_level3(dificultad, idioma, screen):
 # esto es la ejecución del Juego 
 if __name__ == '__main__':
     accion = "iniciar"
+    # Inicializa screen si se ejecuta directamente
+    if 'screen' not in locals():
+         pygame.init()
+         WIDTH, HEIGHT = 1540, 800
+         screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+
     while accion != "salir_juego":
         
         if accion == "iniciar" or accion == "reiniciar":
-            accion = run_level3()
+            accion = run_level3(screen=screen)
         
         elif accion == "salir_menu":
             # Aquí se asume que volvería al menú principal
