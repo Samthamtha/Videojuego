@@ -1,17 +1,19 @@
-# menu.py
 import pygame
 import sys
 import os
 import math
+import random # Necesario para la aleatoriedad del glitch
+import time # Necesario para la temporización del glitch
 from settings import config_menu, idioma, dificultad
 from credits import show_credits
 
+# CONFIGURACIÓN GLOBAL DEL PYGAME MIXER
 pygame.mixer.init()
 pygame.mixer.music.load('sonido/inicio_musica.mp3')
 pygame.mixer.music.play(-1)
 pygame.mixer.music.set_volume(0.5)
 
-# 🔊 Cargar sonidos de botones
+# Cargar sonidos de botones
 try:
     sonido_seleccion = pygame.mixer.Sound("sonido/boton_selec.mp3")
     sonido_ejecucion = pygame.mixer.Sound("sonido/boton_ejec.mp3")
@@ -20,7 +22,31 @@ except pygame.error as e:
     sonido_seleccion = None
     sonido_ejecucion = None
 
-# pegar el menú al borde
+# NUEVOS ASSETS DE GLITCH
+try:
+    #  Sonido de Horror (ahora se detiene automáticamente)
+    SOUND_HORROR = pygame.mixer.Sound("sonido/inicio_horror.mp3") 
+    SOUND_HORROR.set_volume(0.3) 
+except pygame.error as e:
+    print(f"ADVERTENCIA: No se pudo cargar el sonido 'inicio_horror.mp3'. {e}")
+    SOUND_HORROR = None 
+
+# Variables de control para el efecto Glitch
+GLITCH_DURATION_SHORT_MS = 300 # Duración normal (rápida)
+GLITCH_DURATION_LONG_MIN_MS = 2000 # Duración mínima del glitch extendido (2 segundos)
+GLITCH_DURATION_LONG_MAX_MS = 4000 # Duración máxima del glitch extendido (4 segundos)
+GLITCH_LONG_CHANCE = 15          # 15% de probabilidad de un glitch largo (en lugar del corto)
+
+GLITCH_COOLDOWN_MS = 5000 # El parpadeo no ocurrirá inmediatamente después de uno
+GLITCH_MAX_INTERVAL = 8000 # Máximo tiempo para el próximo parpadeo (8 segundos)
+
+glitch_active = False
+glitch_end_time = 0
+last_glitch_time = 0
+# Intervalo inicial aleatorio para que no sea predecible
+next_glitch_interval = random.randint(3000, GLITCH_MAX_INTERVAL) 
+
+# esto pega el menú al borde
 LEFT_ALIGN_X = 50
 OVERLAY_COLOR = (0, 0, 0)
 OVERLAY_ALPHA = 100
@@ -42,8 +68,63 @@ def cargar_frames_desde_carpeta(carpeta):
             frames.append(imagen)
     return frames
 
+def check_for_glitch():
+    """Decide si es momento de iniciar o terminar el efecto de parpadeo."""
+    global glitch_active, glitch_end_time, last_glitch_time, next_glitch_interval
+
+    current_time = pygame.time.get_ticks()
+
+    if glitch_active:
+        # Si está activo, revisa si debe terminar
+        if current_time >= glitch_end_time:
+            glitch_active = False
+            
+            #DETENER EL SONIDO INMEDIATAMENTE y RESTAURAR MÚSICA
+            if SOUND_HORROR:
+                SOUND_HORROR.stop()
+            
+            #reanudar la música de fondo a volumen normal
+            if pygame.mixer.music.get_busy():
+                pygame.mixer.music.set_volume(0.6) 
+            
+            # Establecer el nuevo intervalo de espera (tiempo de recarga + un tiempo aleatorio)
+            next_glitch_interval = GLITCH_COOLDOWN_MS + random.randint(1000, GLITCH_MAX_INTERVAL - GLITCH_COOLDOWN_MS)
+            return # Termina el chequeo
+
+    # Si no está activo, revisa si debe empezar
+    if (current_time - last_glitch_time) > next_glitch_interval:
+        # Probabilidad de iniciar el glitch (e.g., 50% de probabilidad)
+        if random.randint(1, 100) > 50:
+            glitch_active = True
+            last_glitch_time = current_time
+            
+            #NUEVA LÓGICA DE DURACIÓN: Largo o Corto
+            if random.randint(1, 100) <= GLITCH_LONG_CHANCE:
+                # Glitch largo
+                duration = random.randint(GLITCH_DURATION_LONG_MIN_MS, GLITCH_DURATION_LONG_MAX_MS)
+                print(f"--- GLITCH LARGO INICIADO: {duration}ms ---")
+            else:
+                # Glitch corto (normal)
+                duration = GLITCH_DURATION_SHORT_MS
+                
+            glitch_end_time = current_time + duration
+            
+            # Reproducir el sonido de horror
+            if SOUND_HORROR:
+                # Bajar la música de fondo mientras suena el horror
+                pygame.mixer.music.set_volume(0.1) 
+                # El sonido se reproducirá y se detendrá cuando termine el glitch
+                SOUND_HORROR.play()
+            
+            # El cálculo del next_glitch_interval se movió al final del glitch para evitar glitches consecutivos
+            
 
 def run_menu(screen, dificultad, idioma):
+
+# INICIALIZACIÓN DE VARIABLES Y ASSETS DEL MENÚ
+
+    global glitch_active # Hacemos referencia a la variable global
+
     if not pygame.font.get_init():
         pygame.font.init()
 
@@ -90,25 +171,45 @@ def run_menu(screen, dificultad, idioma):
             print(f"Advertencia: No se pudo cargar la imagen SELECCIONADA del botón '{text}' en {path}: {e}")
             button_selected_images[text] = button_images.get(text)
 
-    fondo = pygame.image.load("img/fondoinicio.png").convert()
-    fondo = pygame.transform.scale(fondo, (screen.get_width(), screen.get_height()))
+    #CARGA DE FONDOS (NORMAL y GLITCH)
+    try:
+        fondo_normal = pygame.image.load("img/fondoinicio.png").convert() # Fondo original
+        fondo_normal = pygame.transform.scale(fondo_normal, (screen.get_width(), screen.get_height()))
+        
+        fondo_glitch = pygame.image.load("img/fondo_inicio2.png").convert() # Fondo de glitch
+        fondo_glitch = pygame.transform.scale(fondo_glitch, (screen.get_width(), screen.get_height()))
+    except pygame.error as e:
+        print(f"ERROR al cargar un fondo: {e}")
+        fondo_normal = pygame.Surface((screen.get_width(), screen.get_height()))
+        fondo_normal.fill((50, 50, 100))
+        fondo_glitch = pygame.Surface((screen.get_width(), screen.get_height()))
+        fondo_glitch.fill((100, 0, 0))
+
 
     titulo_img = pygame.image.load("img/logo.png").convert_alpha()
     titulo_img = pygame.transform.scale(titulo_img, (400, 200))
     rect_titulo_original = titulo_img.get_rect(topleft=(LEFT_ALIGN_X, 10))
 
+    # CARGA DE PERSONAJES (PIBBLE y GLITCH)
     pibble_cargado = False
     try:
-        pibble_img_original = pygame.image.load("img/pibble.png").convert_alpha()
+        pibble_img_normal = pygame.image.load("img/pibble.png").convert_alpha() # Imagen original (pibble)
+        pibble_img_glitch = pygame.image.load("img/bat_cat.png").convert_alpha() # Imagen de glitch (bad_cat)
+
         NEW_HEIGHT = screen.get_height() - 100
-        ratio = pibble_img_original.get_width() / pibble_img_original.get_height()
+        ratio = pibble_img_normal.get_width() / pibble_img_normal.get_height()
         NEW_WIDTH = int(NEW_HEIGHT * ratio)
-        pibble_img_original = pygame.transform.scale(pibble_img_original, (NEW_WIDTH, NEW_HEIGHT))
+        
+        # Redimensionar ambas imágenes del personaje al mismo tamaño
+        pibble_img_normal = pygame.transform.scale(pibble_img_normal, (NEW_WIDTH, NEW_HEIGHT))
+        pibble_img_glitch = pygame.transform.scale(pibble_img_glitch, (NEW_WIDTH, NEW_HEIGHT))
+        
         pibble_x_original = screen.get_width() - NEW_WIDTH - 50
         pibble_y_original = screen.get_height() // 2 - NEW_HEIGHT // 2
-        pibble_rect_original = pibble_img_original.get_rect(topleft=(pibble_x_original, pibble_y_original))
+        pibble_rect_original = pibble_img_normal.get_rect(topleft=(pibble_x_original, pibble_y_original))
         pibble_cargado = True
-    except pygame.error:
+    except pygame.error as e:
+        print(f"ERROR al cargar imágenes de personaje: {e}")
         pibble_cargado = False
 
     overlay = pygame.Surface((screen.get_width(), screen.get_height())).convert_alpha()
@@ -117,12 +218,22 @@ def run_menu(screen, dificultad, idioma):
 
     current_time = 0
 
+
+    #BUCLE PRINCIPAL DEL MENÚ
+
     while True:
+        
+        # Ejecutar el chequeo de Glitch
+        check_for_glitch()
+
+        # Procesar Eventos
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            elif event.type == pygame.KEYDOWN:
+            
+            # Solo permitir interacción si el glitch no está activo
+            elif event.type == pygame.KEYDOWN and not glitch_active:
                 if event.key == pygame.K_UP:
                     selected_option = (selected_option - 1) % len(main_menu_options)
                     if sonido_seleccion:
@@ -144,25 +255,43 @@ def run_menu(screen, dificultad, idioma):
                     elif opcion == "Salir":
                         return "salir", dificultad, idioma
 
-        current_time += clock.get_time()
-        screen.blit(fondo, (0, 0))
-        screen.blit(overlay, (0, 0))
+        # Lógica de Dibujo
+        
+        #  Determinar qué fondo usar
+        fondo_a_usar = fondo_glitch if glitch_active else fondo_normal
+        screen.blit(fondo_a_usar, (0, 0))
+        
+        #Usar overlay (opcional: cambiar overlay durante glitch)
+        if glitch_active:
+            overlay_glitch = pygame.Surface((screen.get_width(), screen.get_height())).convert_alpha()
+            overlay_glitch.fill((255, 0, 0)) # Rojo durante el glitch
+            overlay_glitch.set_alpha(150) # Más opaco
+            screen.blit(overlay_glitch, (0, 0))
+        else:
+            screen.blit(overlay, (0, 0)) # Overlay normal
 
+        current_time += clock.get_time()
+
+        # Dibujar Título (no cambia en el glitch)
         logo_offset = BREATH_AMPLITUDE * math.sin(current_time * BREATH_SPEED * LOGO_BREATH_SPEED_MULTIPLIER)
         rect_titulo_animado = rect_titulo_original.copy()
         rect_titulo_animado.y = rect_titulo_original.y + logo_offset
         screen.blit(titulo_img, rect_titulo_animado)
 
+        #Dibujar Personaje (cambia en el glitch)
         if pibble_cargado:
+            personaje_a_usar = pibble_img_glitch if glitch_active else pibble_img_normal
             pibble_offset = BREATH_AMPLITUDE * math.sin(current_time * BREATH_SPEED)
             pibble_rect_animado = pibble_rect_original.copy()
             pibble_rect_animado.y = pibble_rect_original.y + pibble_offset
-            screen.blit(pibble_img_original, pibble_rect_animado)
+            screen.blit(personaje_a_usar, pibble_rect_animado)
 
+        # Dibujar Botones (los botones seleccionados cambian de color)
         Y_GAP = 35
-        TOTAL_BUTTONS_HEIGHT = (BUTTON_HEIGHT * 4) + (Y_GAP * 3)
-
+        BUTTON_X = LEFT_ALIGN_X
+        
         if pibble_cargado:
+            TOTAL_BUTTONS_HEIGHT = (BUTTON_HEIGHT * 4) + (Y_GAP * 3)
             OFFSET_DOWN = 50
             BOTONES_Y_INICIO_CENTRO = (pibble_rect_original.centery + OFFSET_DOWN) - TOTAL_BUTTONS_HEIGHT // 2
             MIN_Y_START = rect_titulo_original.bottom + 30
@@ -172,16 +301,28 @@ def run_menu(screen, dificultad, idioma):
             BOTONES_Y_INICIO_CENTRO = rect_titulo_original.bottom + 80
 
         def mostrar_boton(frames, texto, y, seleccionado=False, ancho=BUTTON_WIDTH, alto=BUTTON_HEIGHT):
-            BUTTON_X = LEFT_ALIGN_X
-            img = button_selected_images.get(texto) if seleccionado else button_images.get(texto)
+            
+            # Si el glitch está activo, todos los botones se ven normales y el texto es rojo
+            is_selected_visual = seleccionado and not glitch_active
+            
+            img = button_selected_images.get(texto) if is_selected_visual else button_images.get(texto)
+            
             if img:
                 rect = img.get_rect(topleft=(BUTTON_X, y - alto // 2))
                 screen.blit(img, rect)
+                # La imagen ya debe contener el texto del botón.
             else:
-                color = (200, 0, 0) if texto == main_menu_options[selected_option] else (0, 0, 0)
-                text = font.render(texto, True, color)
-                rect = text.get_rect(center=(BUTTON_X + ancho // 2, y))
-                screen.blit(text, rect)
+                # Si no hay imagen de botón, dibujar solo el texto como respaldo
+                color_texto = (255, 255, 255) # Blanco por defecto
+                if glitch_active:
+                    color_texto = (255, 0, 0) # Rojo durante el glitch
+                elif is_selected_visual:
+                    color_texto = (255, 255, 0) # Amarillo si está seleccionado y no hay glitch
+                
+                text_surface = font.render(texto, True, color_texto)
+                text_rect = text_surface.get_rect(center=(BUTTON_X + ancho // 2, y))
+                screen.blit(text_surface, text_rect)
+
 
         Y_1 = BOTONES_Y_INICIO_CENTRO + BUTTON_HEIGHT // 2
         Y_2 = Y_1 + BUTTON_HEIGHT + Y_GAP
