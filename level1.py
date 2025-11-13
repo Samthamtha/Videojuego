@@ -32,6 +32,8 @@ BIN_WIDTH_INORGANIC = 220
 BIN_HEIGHT = 120
 TRASH_SIZE = 80 
 DANGER_SIZE = 100 # Tamaño para peligros (Tronco/Bomba)
+ICON_BOX_SIZE = 72  # Tamaño del cuadrado de simbología (fondo blanco)
+ICON_SMALL_SIZE = 28  # Tamaño del ícono de bote dentro del cuadro
 
 # Botes de Basura
 bin_organica = pygame.image.load("img/boteVerde.png").convert_alpha()
@@ -55,6 +57,16 @@ TRASH_MAP = {
     'inorganico': trash_botella 
 }
 TRASH_TYPES = list(TRASH_MAP.keys())
+
+# --- Íconos para la simbología (usar las mismas imágenes, escaladas) ---
+icon_organica = pygame.transform.scale(trash_cascara, (ICON_BOX_SIZE - 16, ICON_BOX_SIZE - 16))
+icon_reciclable = pygame.transform.scale(trash_lata, (ICON_BOX_SIZE - 16, ICON_BOX_SIZE - 16))
+icon_inorganico = pygame.transform.scale(trash_botella, (ICON_BOX_SIZE - 16, ICON_BOX_SIZE - 16))
+
+# Pequeños botes para superponer en la esquina del cuadro (ayuda visual)
+bin_icon_organica = pygame.transform.scale(bin_organica, (ICON_SMALL_SIZE, ICON_SMALL_SIZE))
+bin_icon_reciclable = pygame.transform.scale(bin_reciclable, (ICON_SMALL_SIZE, ICON_SMALL_SIZE))
+bin_icon_inorganico = pygame.transform.scale(bin_inorganico, (ICON_SMALL_SIZE, ICON_SMALL_SIZE))
 
 # --- Objetos Peligrosos (Tronco y Bomba) ---
 try:
@@ -345,11 +357,45 @@ def run_level1(dificultad, idioma, screen):
         trashes.draw(screen)
         player.draw(screen) 
         
+        # --- Simbología vertical izquierda (cuadrados blancos con imágenes) ---
+        SYM_X = 10
+        SYM_Y = 10
+        SYM_WIDTH = ICON_BOX_SIZE + 24
+        SYM_GAP = 12
+        # Altura total basada en 3 iconos apilados
+        SYM_HEIGHT = ICON_BOX_SIZE * 3 + SYM_GAP * 2 + 20
+        sym_rect = pygame.Rect(SYM_X, SYM_Y, SYM_WIDTH, SYM_HEIGHT)
+        pygame.draw.rect(screen, LIGHT_GRAY, sym_rect, border_radius=8)
+        pygame.draw.rect(screen, BLACK, sym_rect, 2, border_radius=8)
+
+        # Dibujar cada cuadro blanco con la imagen centrada y un pequeño ícono de bote
+        types = [('organica', icon_organica, bin_icon_organica),
+                 ('reciclable', icon_reciclable, bin_icon_reciclable),
+                 ('inorganico', icon_inorganico, bin_icon_inorganico)]
+        icon_x = SYM_X + 12
+        icon_y = SYM_Y + 10
+        for tipo, icon_img, bin_icon in types:
+            box_rect = pygame.Rect(icon_x, icon_y, ICON_BOX_SIZE, ICON_BOX_SIZE)
+            pygame.draw.rect(screen, WHITE, box_rect, border_radius=6)
+            pygame.draw.rect(screen, BLACK, box_rect, 2, border_radius=6)
+            # Centrar el ícono de basura dentro del cuadro
+            img_rect = icon_img.get_rect(center=box_rect.center)
+            screen.blit(icon_img, img_rect)
+            # Dibujar el pequeño bote en la esquina inferior derecha del cuadro
+            bin_rect = bin_icon.get_rect()
+            bin_rect.bottomright = (box_rect.right - 6, box_rect.bottom - 6)
+            screen.blit(bin_icon, bin_rect)
+            # Etiqueta simple a la derecha del cuadro
+            label = get_text({'organica':'ORGÁNICA','reciclable':'RECICLABLE','inorganico':'INORGÁNICA'}[tipo], idioma)
+            label_s = font_small.render(label, True, BLACK)
+            screen.blit(label_s, (box_rect.right + 8, box_rect.y + (ICON_BOX_SIZE - label_s.get_height())//2))
+            icon_y += ICON_BOX_SIZE + SYM_GAP
+
         # --- Panel izquierdo de referencias y metas (HUD) ---
-        # Aumentamos el ancho del panel (de 250 a 300) y el alto (de 300 a 360) para dar más espacio.
+        # Movemos el panel a la derecha para evitar solapamiento con la simbología.
         PANEL_WIDTH = 300
         PANEL_HEIGHT = 360
-        panel_rect=pygame.Rect(10,10,PANEL_WIDTH,PANEL_HEIGHT)
+        panel_rect=pygame.Rect(110,10,PANEL_WIDTH,PANEL_HEIGHT)
         pygame.draw.rect(screen,LIGHT_GRAY,panel_rect,border_radius=8)
         pygame.draw.rect(screen,BLACK,panel_rect,3,border_radius=8)
         
