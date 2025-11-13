@@ -4,14 +4,14 @@ import os
 import math
 import random # Necesario para la aleatoriedad del glitch
 import time # Necesario para la temporización del glitch
-from settings import config_menu, idioma, dificultad
+from settings import config_menu, idioma, dificultad, glitch_activado, volumen_musica, volumen_efectos
 from credits import show_credits
 
 # CONFIGURACIÓN GLOBAL DEL PYGAME MIXER
 pygame.mixer.init()
 pygame.mixer.music.load('sonido/inicio_musica.mp3')
 pygame.mixer.music.play(-1)
-pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.set_volume(0.6)
 
 # Cargar sonidos de botones
 try:
@@ -71,6 +71,14 @@ def cargar_frames_desde_carpeta(carpeta):
 def check_for_glitch():
     """Decide si es momento de iniciar o terminar el efecto de parpadeo."""
     global glitch_active, glitch_end_time, last_glitch_time, next_glitch_interval
+    
+    # Importar la configuración actual del glitch
+    from settings import glitch_activado
+    
+    # Si el glitch está desactivado en configuración, no hacer nada
+    if not glitch_activado:
+        glitch_active = False
+        return
 
     current_time = pygame.time.get_ticks()
 
@@ -84,8 +92,9 @@ def check_for_glitch():
                 SOUND_HORROR.stop()
             
             #reanudar la música de fondo a volumen normal
+            from settings import volumen_musica
             if pygame.mixer.music.get_busy():
-                pygame.mixer.music.set_volume(0.6) 
+                pygame.mixer.music.set_volume(volumen_musica) 
             
             # Establecer el nuevo intervalo de espera (tiempo de recarga + un tiempo aleatorio)
             next_glitch_interval = GLITCH_COOLDOWN_MS + random.randint(1000, GLITCH_MAX_INTERVAL - GLITCH_COOLDOWN_MS)
@@ -115,14 +124,12 @@ def check_for_glitch():
                 pygame.mixer.music.set_volume(0.1) 
                 # El sonido se reproducirá y se detendrá cuando termine el glitch
                 SOUND_HORROR.play()
-            
-            # El cálculo del next_glitch_interval se movió al final del glitch para evitar glitches consecutivos
-            
+
 
 def run_menu(screen, dificultad, idioma):
-
-# INICIALIZACIÓN DE VARIABLES Y ASSETS DEL MENÚ
-
+    """Función principal del menú con efecto glitch."""
+    
+    # INICIALIZACIÓN DE VARIABLES Y ASSETS DEL MENÚ
     global glitch_active # Hacemos referencia a la variable global
 
     if not pygame.font.get_init():
@@ -185,7 +192,6 @@ def run_menu(screen, dificultad, idioma):
         fondo_glitch = pygame.Surface((screen.get_width(), screen.get_height()))
         fondo_glitch.fill((100, 0, 0))
 
-
     titulo_img = pygame.image.load("img/logo.png").convert_alpha()
     titulo_img = pygame.transform.scale(titulo_img, (400, 200))
     rect_titulo_original = titulo_img.get_rect(topleft=(LEFT_ALIGN_X, 10))
@@ -218,9 +224,7 @@ def run_menu(screen, dificultad, idioma):
 
     current_time = 0
 
-
-    #BUCLE PRINCIPAL DEL MENÚ
-
+    # BUCLE PRINCIPAL DEL MENÚ
     while True:
         
         # Ejecutar el chequeo de Glitch
@@ -249,7 +253,14 @@ def run_menu(screen, dificultad, idioma):
                     if opcion == "Iniciar Juego":
                         return "jugar", dificultad, idioma
                     elif opcion == "Configuración":
-                        config_menu(screen)
+                        config_menu(idioma, dificultad, screen)
+                        # Actualizar volúmenes después de salir de configuración
+                        from settings import volumen_musica, volumen_efectos
+                        pygame.mixer.music.set_volume(volumen_musica)
+                        if sonido_seleccion:
+                            sonido_seleccion.set_volume(volumen_efectos)
+                        if sonido_ejecucion:
+                            sonido_ejecucion.set_volume(volumen_efectos)
                     elif opcion == "Créditos":
                         show_credits(screen)
                     elif opcion == "Salir":
@@ -322,7 +333,6 @@ def run_menu(screen, dificultad, idioma):
                 text_surface = font.render(texto, True, color_texto)
                 text_rect = text_surface.get_rect(center=(BUTTON_X + ancho // 2, y))
                 screen.blit(text_surface, text_rect)
-
 
         Y_1 = BOTONES_Y_INICIO_CENTRO + BUTTON_HEIGHT // 2
         Y_2 = Y_1 + BUTTON_HEIGHT + Y_GAP
