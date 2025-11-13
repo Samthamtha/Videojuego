@@ -1,17 +1,8 @@
 import pygame
 import sys
 import random
-
-try:
-    from pause import mostrar_menu_pausa
-except ImportError:
-    # Función dummy de respaldo
-    def mostrar_menu_pausa(screen, HEIGHT, WIDTH):
-        print("ADVERTENCIA: 'pause.py' no encontrado. Presiona cualquier tecla para reanudar.")
-        pygame.time.wait(500)
-        return "reanudar"
-
-
+from pause import mostrar_menu_pausa
+from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
 
 pygame.init()
 WIDTH, HEIGHT = 1540, 800
@@ -20,18 +11,14 @@ pygame.display.set_caption("Nivel 3 - Fábrica de Reciclaje (Simulación)")
 clock = pygame.time.Clock()
 FPS = 60
 
-
-#CARGA DE IMAGEN DE FONDO 
+# CARGA DE IMAGEN DE FONDO 
 try:
-    # Carga la imagen de fondo y la escala al tamaño de la pantalla
     BACKGROUND_IMAGE = pygame.image.load("img/fondo_nivel3.png").convert()
     BACKGROUND_IMAGE = pygame.transform.scale(BACKGROUND_IMAGE, (WIDTH, HEIGHT))
     USE_BACKGROUND_IMAGE = True
 except pygame.error as e:
     print(f"Advertencia: No se pudo cargar la imagen de fondo: {e}")
-    # Si la carga falla, se usará el color de fondo simple
     USE_BACKGROUND_IMAGE = False
-
 
 # COLORES Y FUENTES 
 BLACK = (0, 0, 0)
@@ -95,8 +82,7 @@ class Particle:
         if self.lifetime > 0:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size)
 
-
-#FUNCIONES DE IMÁGENES Y DATOS
+# FUNCIONES DE IMÁGENES Y DATOS
 def create_item_sprite(color, size, shape='rect'):
     surface = pygame.Surface((size, size), pygame.SRCALPHA)
     if shape == 'rect':
@@ -127,13 +113,7 @@ for name, data in TRANSFORM_DATA.items():
     IMAGES[name + '_FINAL_GRANDE'] = create_large_final_sprite(data['color_final'], data['nombre_final'])
     IMAGES[name + '_FINAL_PEQUE'] = create_item_sprite(data['color_final'], ITEM_SIZE, 'rect')
 
-
-
-
-
-
 # CLASES Item y ConveyorBelt 
-
 class Item(pygame.sprite.Sprite):
     def __init__(self, tipo, state, x, y):
         super().__init__()
@@ -193,10 +173,8 @@ class ConveyorBelt:
             x = (i + (pygame.time.get_ticks() // 20 % 30)) % self.width
             pygame.draw.line(surface, line_color, (x, self.y + 5), (x, self.y + self.height - 5), 2)
 
-
 # Función de Inspección y Mensaje
 def show_inspection_screen(screen, item):
-    # código de renderizado
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
     screen.blit(overlay, (0, 0))
@@ -221,7 +199,6 @@ def show_inspection_screen(screen, item):
     screen.blit(text_continue, (box_rect.centerx - text_continue.get_width() // 2, box_rect.bottom - 40))
 
     pygame.display.flip()
-    # fin del código de renderizado
 
     waiting = True
     while waiting:
@@ -235,10 +212,8 @@ def show_inspection_screen(screen, item):
                 return "salir_menu"
     return "continuar"
 
-
 # Función Principal del Nivel 3
 def run_level3(dificultad=None, idioma=None, screen=screen):
-
     METAS_TRITURAR = 5
     contador_triturados = 0
     juego_finalizado = False
@@ -270,21 +245,15 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pygame.event.clear()
-                    # Manejo del menú de pausa
                     accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
-
                     if accion == "salir_juego":
                         return "salir_juego"
                     elif accion == "reiniciar":
                         return "reiniciar"
                     elif accion in ["salir", "salir_menu"]:
                         return "salir_menu"
-                    # Si es "reanudar" o cualquier otra cosa, continúa el juego
-                    # --------------------------------
 
-                # resto de la lógica de la tecla E 
                 if not juego_finalizado and event.key == pygame.K_e and current_item:
-                    # TRITURACIÓN INTERACTIVA
                     if current_item.state == 'ORIG' and not is_grinding:
                         if current_item.rect.right >= GRINDER_STOP_X:
                             is_grinding = True
@@ -296,16 +265,12 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                             for _ in range(30):
                                 particles.append(Particle(p_center_x + random.randint(-10, 10), p_center_y, p_color))
 
-                    # 2. TRANSFORMACIÓN INTERACTIVA (Fase TRIT)
                     elif current_item.state == 'TRIT' and not is_transforming:
                         if current_item.rect.x >= TRANSFORM_STOP_X - 5:
                             is_transforming = True
                             transform_start_time = pygame.time.get_ticks()
 
-        # Lógica de Movimiento y Estados
         if not juego_finalizado:
-
-            #Generación (Spawn)
             if not current_item and not is_grinding and not is_transforming and spawn_timer >= spawn_rate:
                 tipo = random.choice(TRANSFORM_TYPES)
                 new_item = Item(tipo, 'ORIG', -ITEM_SIZE, 0)
@@ -316,7 +281,6 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
 
             spawn_timer += 1
 
-            # Movimiento y Lógica de Fases
             for item in all_items:
                 if item.state == 'ORIG':
                     if not is_grinding:
@@ -342,9 +306,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                         if item.rect.right >= CONVEYOR_BOTTOM_WIDTH:
                             item.rect.right = CONVEYOR_BOTTOM_WIDTH
                             item_inspected = True
-
                             accion = show_inspection_screen(screen, item)
-
                             if accion == "continuar":
                                 item.state = 'OUTPUT'
                                 item.rect.x = OUTPUT_TABLE_X + 20 + len(output_items) * (ITEM_SIZE + 10)
@@ -359,7 +321,6 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 elif item.state == 'OUTPUT':
                     pass
 
-            # Lógica de Trituración (Animación y transición)
             if is_grinding:
                 elapsed_time = pygame.time.get_ticks() - grind_start_time
                 if elapsed_time >= GRIND_TIME:
@@ -367,27 +328,27 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                     current_item.triturar()
                     contador_triturados += 1
 
-            # Actualizar partículas
             particles = [p for p in particles if p.lifetime > 0]
             for p in particles:
                 p.update()
 
-
-        # Dibujo y Renderizado (MODIFICADO AQUÍ PARA EL FONDO)
+        # DIBUJO
         if USE_BACKGROUND_IMAGE:
             screen.blit(BACKGROUND_IMAGE, (0, 0))
         else:
-            screen.fill(DARK_GRAY) # Fondo de color si la imagen falla
+            screen.fill(DARK_GRAY)
 
         meta_text = font_large.render(f"OBJETOS TRITURADOS: {contador_triturados}/{METAS_TRITURAR}", True, YELLOW)
         meta_rect = meta_text.get_rect(center=(WIDTH // 2, 50))
         pygame.draw.rect(screen, BLACK, (meta_rect.x - 20, meta_rect.y - 10, meta_rect.width + 40, meta_rect.height + 20), 0, 5)
         screen.blit(meta_text, meta_rect)
+        
         conveyor_top.draw(screen)
         pygame.draw.rect(screen, RED, (GRINDER_X, CONVEYOR_TOP_Y - 5, GRINDER_WIDTH, GRINDER_HEIGHT), 0, 5)
         pygame.draw.circle(screen, BLACK, (GRINDER_X + GRINDER_WIDTH // 2, CONVEYOR_TOP_Y + CONVEYOR_HEIGHT // 2), 30)
         text_triturar = font_small.render("TRITURADORA", True, WHITE)
         screen.blit(text_triturar, (GRINDER_X + 10, CONVEYOR_TOP_Y + CONVEYOR_HEIGHT + 5))
+        
         conveyor_bottom.draw(screen)
         TRANSFORM_BOX_X = TRANSFORM_BOX_X_CENTERED - 10
         TRANSFORM_BOX_Y = CONVEYOR_BOTTOM_Y - 10
@@ -403,9 +364,12 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 screen.blit(text_hold, (TRANSFORM_BOX_X + 20, TRANSFORM_BOX_Y + TRANSFORM_BOX_H // 2 - text_hold.get_height() // 2))
             else:
                 time_ratio = (pygame.time.get_ticks() - transform_start_time) / TRANSFORM_TIME
-                if time_ratio < 0.5: cover_height_draw = int(time_ratio * 2 * TRANSFORM_BOX_H)
-                elif time_ratio >= 0.5 and time_ratio < 0.8: cover_height_draw = TRANSFORM_BOX_H
-                else: cover_height_draw = int((1.0 - time_ratio) * 5 * TRANSFORM_BOX_H)
+                if time_ratio < 0.5: 
+                    cover_height_draw = int(time_ratio * 2 * TRANSFORM_BOX_H)
+                elif time_ratio >= 0.5 and time_ratio < 0.8: 
+                    cover_height_draw = TRANSFORM_BOX_H
+                else: 
+                    cover_height_draw = int((1.0 - time_ratio) * 5 * TRANSFORM_BOX_H)
                 pygame.draw.rect(screen, BLACK, (TRANSFORM_BOX_X + 10, TRANSFORM_BOX_Y, TRANSFORM_BOX_W, cover_height_draw))
 
         pygame.draw.rect(screen, OUTPUT_TABLE_COLOR, (OUTPUT_TABLE_X, OUTPUT_TABLE_Y, OUTPUT_TABLE_WIDTH, OUTPUT_TABLE_HEIGHT), 0, 5)
@@ -420,44 +384,39 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
 
         for item in all_items:
             if item.state == 'ORIG':
-                screen.blit(item.label_orig,
-                            (item.rect.centerx - item.label_orig.get_width() // 2,
-                             item.rect.top - item.label_orig.get_height() - 5))
+                screen.blit(item.label_orig, (item.rect.centerx - item.label_orig.get_width() // 2, item.rect.top - item.label_orig.get_height() - 5))
                 if item.rect.right == GRINDER_STOP_X and not is_grinding:
                     text_action = font_large.render("Presiona E para Triturar", True, YELLOW)
                     screen.blit(text_action, (item.rect.centerx - text_action.get_width() // 2, item.rect.top - 100))
-
             elif item.state == 'TRIT' and not is_transforming:
-                screen.blit(item.label_trit,
-                            (item.rect.centerx - item.label_trit.get_width() // 2,
-                             item.rect.top - item.label_trit.get_height() - 5))
+                screen.blit(item.label_trit, (item.rect.centerx - item.label_trit.get_width() // 2, item.rect.top - item.label_trit.get_height() - 5))
 
         for p in particles:
             p.draw(screen)
 
-        if juego_finalizado:
-            text_win = font_large.render("¡META ALCANZADA! Todos los objetos transformados.", True, GREEN_FINAL)
-            win_rect = text_win.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-            screen.blit(text_win, win_rect)
-
         pygame.display.flip()
+
+        # Manejo de finalización
+        if juego_finalizado:
+            accion = mostrar_menu_victoria(screen, "level3")
+            if accion == "siguiente":
+                return "siguiente"
+            elif accion == "reintentar":
+                return "reiniciar"
+            elif accion == "salir":
+                return "salir_menu"
 
     return "siguiente"
 
-# esto es la ejecución del Juego 
 if __name__ == '__main__':
     accion = "iniciar"
-    # Inicializa screen si se ejecuta directamente
     if 'screen' not in locals():
          pygame.init()
          WIDTH, HEIGHT = 1540, 800
          screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-
     while accion not in ["salir_juego", "salir_menu"]:
-        
         if accion == "iniciar" or accion == "reiniciar":
             accion = run_level3(screen=screen)
-
     pygame.quit()
     sys.exit()
