@@ -136,37 +136,3 @@ def mostrar_menu_pausa(screen, alto, ancho):
                     return "reanudar"
                 elif evento.key == pygame.K_e:
                     return "reiniciar"
-
-
-
-#SELECCIÓN (ENTER)
-
-                elif evento.key == pygame.K_RETURN:
-
-                    # Lógica basada en la opción seleccionada
-
-                    accion = OPCIONES[seleccion_idx].lower()
-
-                   
-
-                    if accion == "reanudar":
-
-                        return "reanudar"
-
-                    elif accion == "reiniciar":
-
-                        return "reiniciar"
-
-                    elif accion == "salir":
-
-                        return "salir" # Corresponde a "salir_menu" en main.py
-
-
-
-                #SALIR RÁPIDO (ESCAPE)
-
-                elif evento.key == pygame.K_ESCAPE:
-
-                    # Usamos ESCAPE para reanudar por ser la convención más rápida
-
-                    return "reanudar"

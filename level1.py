@@ -61,14 +61,18 @@ try:
     danger_tronco = pygame.transform.scale(danger_tronco, (DANGER_SIZE, DANGER_SIZE))
 except pygame.error:
     print("Advertencia: No se encontró img/Tronco.png. Usando fallback.")
-    danger_tronco = pygame.Surface((DANGER_SIZE, DANGER_SIZE), pygame.SRCALPHA); danger_tronco.fill(DARK_RED); pygame.draw.rect(danger_tronco, BLACK, danger_tronco.get_rect(), 2)
+    danger_tronco = pygame.Surface((DANGER_SIZE, DANGER_SIZE), pygame.SRCALPHA)
+    danger_tronco.fill(DARK_RED)
+    pygame.draw.rect(danger_tronco, BLACK, danger_tronco.get_rect(), 2)
     
 try:
-    danger_bomba = pygame.image.load("img/Bomba.png").convert_alpha()
+    danger_bomba = pygame.image.load("img/bomba.png").convert_alpha()
     danger_bomba = pygame.transform.scale(danger_bomba, (DANGER_SIZE, DANGER_SIZE))
 except pygame.error:
-    print("Advertencia: No se encontró img/Bomba.png. Usando fallback.")
-    danger_bomba = pygame.Surface((DANGER_SIZE, DANGER_SIZE), pygame.SRCALPHA); danger_bomba.fill((0,0,0)); pygame.draw.circle(danger_bomba, (255,0,0), (DANGER_SIZE//2, DANGER_SIZE//2), DANGER_SIZE//2 - 5)
+    print("Advertencia: No se encontró img/bomba.png. Usando fallback.")
+    danger_bomba = pygame.Surface((DANGER_SIZE, DANGER_SIZE), pygame.SRCALPHA)
+    danger_bomba.fill((0, 0, 0))
+    pygame.draw.circle(danger_bomba, (255, 0, 0), (DANGER_SIZE//2, DANGER_SIZE//2), DANGER_SIZE//2 - 5)
 
 DANGER_MAP = {
     'tronco': danger_tronco,
@@ -84,171 +88,219 @@ RIVER_CENTER_WAYPOINTS = [
 ]
 
 def get_position_on_path(progress, waypoints, offset_x=0):
-    if progress >= 1.0: return waypoints[-1][0]+offset_x, waypoints[-1][1]
-    if progress <= 0.0: return waypoints[0][0]+offset_x, waypoints[0][1]
-    num_segments=len(waypoints)-1
-    segment_length=1.0/num_segments
-    segment_index=int(progress/segment_length)
-    if segment_index>=num_segments: segment_index=num_segments-1
-    local_progress=(progress-segment_index*segment_length)/segment_length
-    p1=waypoints[segment_index]; p2=waypoints[segment_index+1]
-    x=p1[0]+(p2[0]-p1[0])*local_progress+offset_x
-    y=p1[1]+(p2[1]-p1[1])*local_progress
-    return x,y
+    if progress >= 1.0:
+        return waypoints[-1][0] + offset_x, waypoints[-1][1]
+    if progress <= 0.0:
+        return waypoints[0][0] + offset_x, waypoints[0][1]
+    num_segments = len(waypoints) - 1
+    segment_length = 1.0 / num_segments
+    segment_index = int(progress / segment_length)
+    if segment_index >= num_segments:
+        segment_index = num_segments - 1
+    local_progress = (progress - segment_index * segment_length) / segment_length
+    p1 = waypoints[segment_index]
+    p2 = waypoints[segment_index + 1]
+    x = p1[0] + (p2[0] - p1[0]) * local_progress + offset_x
+    y = p1[1] + (p2[1] - p1[1]) * local_progress
+    return x, y
 
 class Trash(pygame.sprite.Sprite):
-    def __init__(self,tipo,speed):
+    def __init__(self, tipo, speed):
         super().__init__()
-        self.tipo=tipo # 'organica', 'reciclable', 'inorganico'
-        self.es_peligro=False
-        self.base_size=TRASH_SIZE
-        self.current_size=int(self.base_size*0.4)
-        self.original_image=TRASH_MAP.get(tipo)
-        self.image=pygame.transform.scale(self.original_image,(self.current_size,self.current_size))
-        self.offset_x=random.randint(-30,30)
-        start_pos=RIVER_CENTER_WAYPOINTS[0]
-        self.rect=self.image.get_rect(center=(start_pos[0]+self.offset_x,start_pos[1]))
-        self.speed=speed
-        self.progress=0.0
-        self.path_length=sum(math.sqrt((RIVER_CENTER_WAYPOINTS[i+1][0]-RIVER_CENTER_WAYPOINTS[i][0])**2+
-                                             (RIVER_CENTER_WAYPOINTS[i+1][1]-RIVER_CENTER_WAYPOINTS[i][1])**2)
-                                             for i in range(len(RIVER_CENTER_WAYPOINTS)-1))
+        self.tipo = tipo  # 'organica', 'reciclable', 'inorganico'
+        self.es_peligro = False
+        self.base_size = TRASH_SIZE
+        self.current_size = int(self.base_size * 0.4)
+        self.original_image = TRASH_MAP.get(tipo)
+        self.image = pygame.transform.scale(self.original_image, (self.current_size, self.current_size))
+        self.offset_x = random.randint(-30, 30)
+        start_pos = RIVER_CENTER_WAYPOINTS[0]
+        self.rect = self.image.get_rect(center=(start_pos[0] + self.offset_x, start_pos[1]))
+        self.speed = speed
+        self.progress = 0.0
+        self.path_length = sum(math.sqrt((RIVER_CENTER_WAYPOINTS[i+1][0] - RIVER_CENTER_WAYPOINTS[i][0])**2 +
+                                          (RIVER_CENTER_WAYPOINTS[i+1][1] - RIVER_CENTER_WAYPOINTS[i][1])**2)
+                               for i in range(len(RIVER_CENTER_WAYPOINTS) - 1))
+    
     def update(self):
-        self.progress+=self.speed/self.path_length
-        if self.progress>=1.0: self.kill()
+        self.progress += self.speed / self.path_length
+        if self.progress >= 1.0:
+            self.kill()
         else:
-            new_pos=get_position_on_path(self.progress,RIVER_CENTER_WAYPOINTS,self.offset_x)
-            scale=0.4+0.6*self.progress
-            new_size=int(self.base_size*scale)
-            if abs(new_size-self.current_size)>2:
-                self.current_size=new_size
-                self.image=pygame.transform.scale(self.original_image,(self.current_size,self.current_size))
-            self.rect=self.image.get_rect(center=new_pos)
+            new_pos = get_position_on_path(self.progress, RIVER_CENTER_WAYPOINTS, self.offset_x)
+            scale = 0.4 + 0.6 * self.progress
+            new_size = int(self.base_size * scale)
+            if abs(new_size - self.current_size) > 2:
+                self.current_size = new_size
+                self.image = pygame.transform.scale(self.original_image, (self.current_size, self.current_size))
+            self.rect = self.image.get_rect(center=new_pos)
 
-class Peligro(Trash): 
+class Peligro(Trash):
     def __init__(self, tipo, speed):
         # Llama a __init__ de Trash pero con un tipo dummy 'organica' para inicializar variables
-        super().__init__('organica', speed) 
-        self.tipo = tipo # 'tronco' o 'bomba'
+        super().__init__('organica', speed)
+        self.tipo = tipo  # 'tronco' o 'bomba'
         self.es_peligro = True
         self.base_size = DANGER_SIZE
         self.original_image = DANGER_MAP.get(tipo)
         
-        self.current_size=int(self.base_size*0.4)
-        self.image=pygame.transform.scale(self.original_image,(self.current_size,self.current_size))
+        self.current_size = int(self.base_size * 0.4)
+        self.image = pygame.transform.scale(self.original_image, (self.current_size, self.current_size))
         # Recalcula el rect con la nueva imagen y tamaño
-        start_pos=RIVER_CENTER_WAYPOINTS[0]
-        self.rect=self.image.get_rect(center=(start_pos[0]+self.offset_x,start_pos[1]))
+        start_pos = RIVER_CENTER_WAYPOINTS[0]
+        self.rect = self.image.get_rect(center=(start_pos[0] + self.offset_x, start_pos[1]))
 
 
 class Bin(pygame.sprite.Sprite):
-    def __init__(self,tipo,x):
+    def __init__(self, tipo, x):
         super().__init__()
-        self.tipo=tipo
-        width=BIN_WIDTH_INORGANIC if tipo=='inorganico' else BIN_WIDTH_DEFAULT
-        self.image=pygame.Surface((width,BIN_HEIGHT),pygame.SRCALPHA)
-        if tipo=='organica': self.image.blit(bin_organica,(0,0))
-        elif tipo=='reciclable': self.image.blit(bin_reciclable,(0,0))
-        else: self.image.blit(bin_inorganico,(0,0))
-        self.rect=self.image.get_rect(topleft=(x,HEIGHT-130))
+        self.tipo = tipo
+        width = BIN_WIDTH_INORGANIC if tipo == 'inorganico' else BIN_WIDTH_DEFAULT
+        self.image = pygame.Surface((width, BIN_HEIGHT), pygame.SRCALPHA)
+        if tipo == 'organica':
+            self.image.blit(bin_organica, (0, 0))
+        elif tipo == 'reciclable':
+            self.image.blit(bin_reciclable, (0, 0))
+        else:
+            self.image.blit(bin_inorganico, (0, 0))
+        self.rect = self.image.get_rect(topleft=(x, HEIGHT - 130))
 
 class PlayerBar:
-    def __init__(self,x):
-        self.botes=pygame.sprite.Group()
-        self.botes.add(Bin('organica',x))
-        self.botes.add(Bin('reciclable',x+250))
-        self.botes.add(Bin('inorganico',x+500))
-        self.rect=pygame.Rect(x,HEIGHT-130,720,120)
-    def move(self,dx):
-        self.rect.x+=dx
-        if self.rect.left<0: self.rect.left=0
-        if self.rect.right>WIDTH: self.rect.right=WIDTH
-        bote_list=self.botes.sprites()
-        bote_list[0].rect.x=self.rect.x
-        bote_list[1].rect.x=self.rect.x+250
-        bote_list[2].rect.x=self.rect.x+500
-    def draw(self,surf): self.botes.draw(surf)
+    def __init__(self, x):
+        self.botes = pygame.sprite.Group()
+        self.botes.add(Bin('organica', x))
+        self.botes.add(Bin('reciclable', x + 250))
+        self.botes.add(Bin('inorganico', x + 500))
+        self.rect = pygame.Rect(x, HEIGHT - 130, 720, 120)
+    
+    def move(self, dx):
+        self.rect.x += dx
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > WIDTH:
+            self.rect.right = WIDTH
+        bote_list = self.botes.sprites()
+        bote_list[0].rect.x = self.rect.x
+        bote_list[1].rect.x = self.rect.x + 250
+        bote_list[2].rect.x = self.rect.x + 500
+    
+    def draw(self, surf):
+        self.botes.draw(surf)
 
-def run_level1(dificultad,idioma,screen):
-    global WIDTH,HEIGHT,clock,FPS
+def run_level1(dificultad, idioma, screen):
+    global WIDTH, HEIGHT, clock, FPS
     # --- Config dificultad ---
     # Ajuste de spawn rate para que aparezcan pocos peligros
-    if dificultad.lower() in ["fácil","facil"]: trash_speed,spawn_rate=2,150; danger_spawn_rate=450 
-    elif dificultad.lower() in ["difícil","dificil"]: trash_speed,spawn_rate=4,100; danger_spawn_rate=300 
-    else: trash_speed,spawn_rate=3,120; danger_spawn_rate=360 # Normal: 360 ticks (6 segundos) por peligro
+    if dificultad.lower() in ["fácil", "facil"]:
+        trash_speed = 2
+        spawn_rate = 150
+        danger_spawn_rate = 450
+    elif dificultad.lower() in ["difícil", "dificil"]:
+        trash_speed = 4
+        spawn_rate = 100
+        danger_spawn_rate = 300
+    else:  # Normal: 360 ticks (6 segundos) por peligro
+        trash_speed = 3
+        spawn_rate = 120
+        danger_spawn_rate = 360
 
     # Se mantiene la misma meta y puntuación
-    PUNTOS=20; TIEMPO_TOTAL=60; tiempo_restante=TIEMPO_TOTAL
-    METAS={'reciclable':4,'organica':2,'inorganico':2}
-    CONTADOR={'reciclable':0,'organica':0,'inorganico':0}
-    juego_finalizado=False
-    danger_penalty_display = 0 # Contador para mostrar la penalización por peligro
+    PUNTOS = 20
+    TIEMPO_TOTAL = 60
+    tiempo_restante = TIEMPO_TOTAL
+    METAS = {'reciclable': 4, 'organica': 2, 'inorganico': 2}
+    CONTADOR = {'reciclable': 0, 'organica': 0, 'inorganico': 0}
+    juego_finalizado = False
+    danger_penalty_display = 0  # Contador para mostrar la penalización por peligro
 
     # --- Fondo ---
     try:
-        fondo=pygame.image.load("img/rio.png").convert()
-        fondo=pygame.transform.scale(fondo,(WIDTH,HEIGHT))
-    except: fondo=pygame.Surface((WIDTH,HEIGHT)); fondo.fill(BLUE)
+        fondo = pygame.image.load("img/rio.png").convert()
+        fondo = pygame.transform.scale(fondo, (WIDTH, HEIGHT))
+    except pygame.error:
+        fondo = pygame.Surface((WIDTH, HEIGHT))
+        fondo.fill(BLUE)
 
     # --- Tutorial ---
-    resultado_tutorial=tutorial_nivel1.mostrar_tutorial(screen,fondo)
-    if resultado_tutorial=="salir_juego": return "salir_juego"
+    resultado_tutorial = tutorial_nivel1.mostrar_tutorial(screen, fondo)
+    if resultado_tutorial == "salir_juego":
+        return "salir_juego"
 
     # --- Sprites ---
-    all_sprites=pygame.sprite.Group(); trashes=pygame.sprite.Group()
-    player=PlayerBar(WIDTH//2-360); all_sprites.add(player.botes)
-    spawn_timer=0; danger_timer=0 
-    font=pygame.font.SysFont(None,36)
-    font_small=pygame.font.SysFont(None,28)
-    font_danger = pygame.font.SysFont(None, 24) # Fuente más pequeña para el texto de peligro
+    all_sprites = pygame.sprite.Group()
+    trashes = pygame.sprite.Group()
+    player = PlayerBar(WIDTH // 2 - 360)
+    all_sprites.add(player.botes)
+    spawn_timer = 0
+    danger_timer = 0
+    font = pygame.font.SysFont(None, 36)
+    font_small = pygame.font.SysFont(None, 28)
+    font_danger = pygame.font.SysFont(None, 24)  # Fuente más pequeña para el texto de peligro
 
-    running=True
+    running = True
     while running:
-        dt=clock.tick(FPS)/1000.0
+        dt = clock.tick(FPS) / 1000.0
 
         # --- Actualización juego ---
         if not juego_finalizado:
-            tiempo_restante-=dt
-            if PUNTOS<=0 or tiempo_restante<=0: 
-                PUNTOS=max(PUNTOS,0); tiempo_restante=max(tiempo_restante,0)
-                juego_finalizado=True
-            if all(CONTADOR[tipo]>=METAS[tipo] for tipo in METAS): juego_finalizado=True
+            tiempo_restante -= dt
+            if PUNTOS <= 0 or tiempo_restante <= 0:
+                PUNTOS = max(PUNTOS, 0)
+                tiempo_restante = max(tiempo_restante, 0)
+                juego_finalizado = True
+            if all(CONTADOR[tipo] >= METAS[tipo] for tipo in METAS):
+                juego_finalizado = True
         
         # Actualizar contador de penalización
         if danger_penalty_display > 0:
             danger_penalty_display -= 1
 
         # --- Eventos ---
-        skip=False
+        skip = False
         for event in pygame.event.get():
-            if event.type==pygame.QUIT: return "salir_juego"
-            elif event.type==pygame.KEYDOWN and event.key==pygame.K_ESCAPE:
+            if event.type == pygame.QUIT:
+                return "salir_juego"
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 pygame.event.clear()
-                accion=mostrar_menu_pausa(screen,HEIGHT,WIDTH)
-                if accion=="reanudar": skip=True; break
-                elif accion=="reiniciar": return "reiniciar"
-                elif accion=="salir": return "salir_menu"
-        if skip: continue
+                accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
+                if accion == "reanudar":
+                    skip = True
+                    break
+                elif accion == "reiniciar":
+                    return "reiniciar"
+                elif accion == "salir":
+                    return "salir_menu"
+        if skip:
+            continue
 
-        keys=pygame.key.get_pressed(); dx=0
+        keys = pygame.key.get_pressed()
+        dx = 0
         if not juego_finalizado:
             # --- Movimiento del Jugador ---
-            if keys[pygame.K_LEFT] or keys[pygame.K_a]: dx=-8
-            if keys[pygame.K_RIGHT] or keys[pygame.K_d]: dx=8
+            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+                dx = -8
+            if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+                dx = 8
             player.move(dx)
             
             # --- Aparición de Basura de Clasificación ---
-            spawn_timer+=1
-            if spawn_timer>=spawn_rate:
-                tipo=random.choice(TRASH_TYPES)
-                t=Trash(tipo,trash_speed); all_sprites.add(t); trashes.add(t); spawn_timer=0
+            spawn_timer += 1
+            if spawn_timer >= spawn_rate:
+                tipo = random.choice(TRASH_TYPES)
+                t = Trash(tipo, trash_speed)
+                all_sprites.add(t)
+                trashes.add(t)
+                spawn_timer = 0
                 
             # --- Aparición de Peligros (Tronco/Bomba) ---
-            danger_timer+=1
-            if danger_timer>=danger_spawn_rate:
+            danger_timer += 1
+            if danger_timer >= danger_spawn_rate:
                 # 80% Tronco, 20% Bomba (Ajusta la probabilidad para que la bomba sea rara)
                 danger_type = random.choice(['tronco', 'tronco', 'tronco', 'tronco', 'bomba'])
-                d = Peligro(danger_type, trash_speed); all_sprites.add(d); trashes.add(d); danger_timer=0
+                d = Peligro(danger_type, trash_speed)
+                all_sprites.add(d)
+                trashes.add(d)
+                danger_timer = 0
 
             trashes.update()
             
@@ -259,20 +311,20 @@ def run_level1(dificultad,idioma,screen):
                         
                         if trash.es_peligro:
                             if trash.tipo == 'tronco':
-                                PUNTOS -= 2 # Penalización por Tronco: -2 Puntos
-                                danger_penalty_display = 60 # Muestra el mensaje por 1 segundo (60 frames)
+                                PUNTOS -= 2  # Penalización por Tronco: -2 Puntos
+                                danger_penalty_display = 60  # Muestra el mensaje por 1 segundo (60 frames)
                                 print("¡Peligro! Colisión con Tronco. -2 Puntos.")
                             elif trash.tipo == 'bomba':
-                                PUNTOS = 0 # Penalización por Bomba: Derrota Inmediata
+                                PUNTOS = 0  # Penalización por Bomba: Derrota Inmediata
                                 juego_finalizado = True
                                 print("¡GAME OVER! Colisión con BOMBA.")
                         
-                        elif trash.tipo == bin.tipo and CONTADOR[trash.tipo] < METAS[trash.tipo]: 
-                            CONTADOR[trash.tipo] += 1 # Clasificación Correcta: +1 a la Meta
+                        elif trash.tipo == bin.tipo and CONTADOR[trash.tipo] < METAS[trash.tipo]:
+                            CONTADOR[trash.tipo] += 1  # Clasificación Correcta: +1 a la Meta
                             print(f"¡Correcto! Recolectaste {trash.tipo}. Meta: {CONTADOR[trash.tipo]}/{METAS[trash.tipo]}")
                         
-                        else: 
-                            PUNTOS -= 1 # Clasificación Incorrecta: -1 Punto
+                        else:
+                            PUNTOS -= 1  # Clasificación Incorrecta: -1 Punto
                             print(f"¡Error! Clasificación incorrecta. -1 Punto.")
                         
                         trash.kill()

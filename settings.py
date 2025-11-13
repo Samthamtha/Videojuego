@@ -1,18 +1,14 @@
 # settings.py
 import pygame
-import sys
 
 # Colores globales
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (200, 0, 0)
 
-# Valores configurables
-idioma = "Español"
-dificultad = "Normal"
-
 # ==================== VARIABLES GLOBALES DE CONFIGURACIÓN ====================
 idioma = "Español"  # Valores: "Español" o "Inglés" (por implementar)
+dificultad = "Normal"  # Valores: "Fácil", "Normal", "Difícil"
 volumen_musica = 0.6  # Rango: 0.0 a 1.0
 volumen_efectos = 1.0  # Rango: 0.0 a 1.0
 glitch_activado = True  # True = Glitch ON, False = Glitch OFF
@@ -103,7 +99,11 @@ def draw_option_selector(screen, rect, options, current_index, is_selected, font
 # ==================== MENÚ DE CONFIGURACIÓN ====================
 
 def config_menu(idioma, dificultad, screen):
-    """Muestra el menú de configuración con todas las opciones."""
+    """Muestra el menú de configuración con todas las opciones.
+    
+    Retorna:
+        tuple: (idioma_actualizado, dificultad_actualizado) o None si se cierra la ventana
+    """
     global volumen_musica, volumen_efectos, glitch_activado
     
     # Cargar sonidos de botones
@@ -124,7 +124,7 @@ def config_menu(idioma, dificultad, screen):
     try:
         font_title = pygame.font.Font("font/pixel_font.ttf", 64)
         font_option = pygame.font.Font("font/pixel_font.ttf", 32)
-    except:
+    except (FileNotFoundError, pygame.error):
         font_title = pygame.font.SysFont("Arial", 50, bold=True)
         font_option = pygame.font.SysFont("Arial", 28, bold=True)
     
@@ -151,7 +151,12 @@ def config_menu(idioma, dificultad, screen):
     
     # Valores de idioma
     idiomas = ["Español", "Inglés"]
-    idioma_index = idiomas.index(idioma)
+    try:
+        idioma_index = idiomas.index(idioma)
+    except ValueError:
+        # Si el idioma no está en la lista, usar el primero por defecto
+        idioma_index = 0
+        idioma = idiomas[0]
     
     # Dimensiones
     screen_width, screen_height = screen.get_size()
@@ -179,8 +184,7 @@ def config_menu(idioma, dificultad, screen):
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                return idioma, dificultad
             
             elif event.type == pygame.KEYDOWN:
                 # Navegación vertical
@@ -198,7 +202,7 @@ def config_menu(idioma, dificultad, screen):
                 elif event.key in (pygame.K_LEFT, pygame.K_a):
                     if selected_option == 0:  # Idioma
                         idioma_index = (idioma_index - 1) % len(idiomas)
-                        idioma = idiomas[idioma_index]
+                        idioma = idiomas[idioma_index]  # Actualizar variable local y global
                     
                     elif selected_option == 1:  # Volumen Música
                         volumen_musica = max(0.0, volumen_musica - 0.1)
@@ -220,7 +224,7 @@ def config_menu(idioma, dificultad, screen):
                 elif event.key in (pygame.K_RIGHT, pygame.K_d):
                     if selected_option == 0:  # Idioma
                         idioma_index = (idioma_index + 1) % len(idiomas)
-                        idioma = idiomas[idioma_index]
+                        idioma = idiomas[idioma_index]  # Actualizar variable local y global
                     
                     elif selected_option == 1:  # Volumen Música
                         volumen_musica = min(1.0, volumen_musica + 0.1)
@@ -244,6 +248,8 @@ def config_menu(idioma, dificultad, screen):
                     if selected_option == 4:  # Volver
                         if sonido_ejecucion:
                             sonido_ejecucion.play()
+                        # Asegurar que el idioma esté actualizado antes de salir
+                        idioma = idiomas[idioma_index]
                         running = False
                     else:
                         if sonido_ejecucion:
@@ -282,11 +288,6 @@ def config_menu(idioma, dificultad, screen):
         
         pygame.display.flip()
         clock.tick(60)
-    font = pygame.font.SysFont(None, 40)
-    options = ["Idioma", "Dificultad", "Volver"]
-    selected_option = 0
-    clock = pygame.time.Clock()
-
-
-    pygame.display.flip()
-    clock.tick(60)
+    
+    # Retornar los valores actualizados
+    return idioma, dificultad

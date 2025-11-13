@@ -1,5 +1,7 @@
 import pygame
 import sys
+import random
+import math
 from pathlib import Path
 from pause import mostrar_menu_pausa
 from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
@@ -111,6 +113,137 @@ class Herramienta(pygame.sprite.Sprite):
 # ================== FONDO ==================
 FONDO_NIVEL2 = load_image("pibble_fondo.png", (ANCHO, ALTO), convert_alpha=False, fallback_color=(30,144,255,255))
 
+# ================== CLASE ENEMIGO DISTRACTOR ==================
+class EnemigoDistractor:
+    """Enemigo que aparece brevemente para distraer al jugador."""
+    def __init__(self, screen_width, screen_height):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        self.activo = False
+        self.tiempo_aparicion = 0.0
+        self.duracion_aparicion = 2.0  # Duración en segundos
+        self.velocidad_animacion = 0.0
+        self.alpha = 0
+        self.scale = 0.5
+        self.x = 0
+        self.y = 0
+        self.invertir_controles = False  # Flag para invertir controles en modo difícil
+        
+        # Cargar imagen del enemigo (gato malvado)
+        try:
+            self.imagen_original = load_image("bat_cat.png", (200, 200), convert_alpha=True)
+        except:
+            # Si no se puede cargar, crear una imagen de fallback
+            self.imagen_original = pygame.Surface((200, 200), pygame.SRCALPHA)
+            pygame.draw.circle(self.imagen_original, (255, 0, 0), (100, 100), 80)
+            pygame.draw.circle(self.imagen_original, (0, 0, 0), (80, 80), 15)
+            pygame.draw.circle(self.imagen_original, (0, 0, 0), (120, 80), 15)
+        
+        self.imagen = self.imagen_original.copy()
+        self.rect = self.imagen.get_rect()
+        
+        # Mensajes distractores
+        self.mensajes = [
+            "¡JAJAJA!",
+            "¡NO PODRÁS!",
+            "¡MUAHAHA!",
+            "¡TE DISTRAIGO!",
+            "¡MIRE AQUÍ!",
+            "¡JA JA JA!"
+        ]
+        self.mensajes_dificil = [
+            "¡CONTROLES INVERTIDOS!",
+            "¡JAJAJA!",
+            "¡AHORA ES DIFÍCIL!",
+            "¡MUAHAHA!",
+            "¡TE CONFUNDO!",
+            "¡JA JA JA!"
+        ]
+        self.mensaje_actual = ""
+        self.font_mensaje = pygame.font.Font(None, 72)
+    
+    def activar(self):
+        """Activa el enemigo en una posición aleatoria."""
+        if not self.activo:
+            self.activo = True
+            self.tiempo_aparicion = 0.0
+            self.velocidad_animacion = 0.0
+            self.alpha = 0
+            self.scale = 0.5
+            
+            # Posición aleatoria (evitar el centro donde está el objeto)
+            self.x = random.randint(100, self.screen_width - 300)
+            self.y = random.randint(100, self.screen_height - 300)
+            
+            # Mensaje aleatorio (diferente si invierte controles)
+            if self.invertir_controles:
+                self.mensaje_actual = random.choice(self.mensajes_dificil)
+            else:
+                self.mensaje_actual = random.choice(self.mensajes)
+            
+            self.rect.center = (self.x, self.y)
+    
+    def update(self, delta_time):
+        """Actualiza la animación del enemigo."""
+        if self.activo:
+            self.tiempo_aparicion += delta_time
+            self.velocidad_animacion += delta_time * 8.0  # Velocidad de animación
+            
+            # Animación de entrada (primeros 0.5 segundos)
+            if self.tiempo_aparicion < 0.5:
+                # Efecto de zoom y fade in
+                progress = self.tiempo_aparicion / 0.5
+                self.scale = 0.5 + (1.0 - 0.5) * progress
+                self.alpha = int(255 * progress)
+            # Animación de salida (últimos 0.5 segundos)
+            elif self.tiempo_aparicion > self.duracion_aparicion - 0.5:
+                progress = (self.tiempo_aparicion - (self.duracion_aparicion - 0.5)) / 0.5
+                self.scale = 1.0 - (0.3 * progress)
+                self.alpha = int(255 * (1.0 - progress))
+            else:
+                # En el medio, mantener tamaño y opacidad
+                self.scale = 1.0
+                self.alpha = 255
+                # Efecto de "respiración" sutil
+                self.scale = 1.0 + 0.1 * math.sin(self.velocidad_animacion)
+            
+            # Actualizar imagen escalada
+            new_size = (int(200 * self.scale), int(200 * self.scale))
+            self.imagen = pygame.transform.scale(self.imagen_original, new_size)
+            self.imagen.set_alpha(self.alpha)
+            self.rect = self.imagen.get_rect(center=(self.x, self.y))
+            
+            # Desactivar después del tiempo
+            if self.tiempo_aparicion >= self.duracion_aparicion:
+                self.activo = False
+    
+    def draw(self, screen):
+        """Dibuja el enemigo en la pantalla."""
+        if self.activo and self.alpha > 0:
+            # Dibujar imagen del enemigo
+            screen.blit(self.imagen, self.rect)
+            
+            # Dibujar mensaje distractivo
+            if self.alpha > 100:  # Solo mostrar mensaje cuando está bien visible
+                mensaje_surf = self.font_mensaje.render(self.mensaje_actual, True, (255, 0, 0))
+                mensaje_surf.set_alpha(self.alpha)
+                mensaje_rect = mensaje_surf.get_rect(center=(self.x, self.y - 150))
+                
+                # Fondo del mensaje para mejor legibilidad
+                fondo_mensaje = pygame.Surface((mensaje_rect.width + 20, mensaje_rect.height + 10), pygame.SRCALPHA)
+                fondo_mensaje.fill((0, 0, 0, min(200, self.alpha)))
+                screen.blit(fondo_mensaje, (mensaje_rect.x - 10, mensaje_rect.y - 5))
+                screen.blit(mensaje_surf, mensaje_rect)
+            
+            # Efecto de brillo/glow alrededor
+            if self.alpha > 150:
+                glow_surface = pygame.Surface((self.rect.width + 40, self.rect.height + 40), pygame.SRCALPHA)
+                glow_alpha = int((self.alpha - 150) * 0.3)
+                pygame.draw.circle(glow_surface, (255, 0, 0, glow_alpha), 
+                                 (glow_surface.get_width() // 2, glow_surface.get_height() // 2),
+                                 min(glow_surface.get_width(), glow_surface.get_height()) // 2)
+                screen.blit(glow_surface, (self.rect.x - 20, self.rect.y - 20))
+
 # ================== NIVEL 2 ==================
 def run_level2(dificultad, idioma, screen):
     global ANCHO, ALTO, fuente, clock, FPS, FONDO_NIVEL2, OBJETO_IMAGENES, OBJETOS_IMGS_LOADED
@@ -135,6 +268,25 @@ def run_level2(dificultad, idioma, screen):
     objeto_reparado_timer = 0.0
     success_flash_timer = 0.0
     juego_finalizado = False
+    
+    # ================== SISTEMA DE ENEMIGO DISTRACTOR ==================
+    enemigo = EnemigoDistractor(ANCHO, ALTO)
+    enemigo_timer = 0.0
+    es_modo_dificil = dificultad.lower() in ["difícil", "dificil"]
+    # Tiempo entre apariciones (ajustable según dificultad)
+    if dificultad.lower() in ["fácil", "facil"]:
+        enemigo_intervalo_min = 8.0  # Aparece cada 8-12 segundos
+        enemigo_intervalo_max = 12.0
+    elif es_modo_dificil:
+        enemigo_intervalo_min = 4.0  # Aparece cada 4-6 segundos (más frecuente)
+        enemigo_intervalo_max = 6.0
+        # En modo difícil, el enemigo invierte los controles
+        enemigo.invertir_controles = True
+    else:  # Normal - Apariciones más frecuentes
+        enemigo_intervalo_min = 3.5  # Aparece cada 3.5-5.5 segundos (más frecuente)
+        enemigo_intervalo_max = 5.5
+    
+    proxima_aparicion = random.uniform(enemigo_intervalo_min, enemigo_intervalo_max)
 
     tool_ancho = TOOL_DISPLAY_WIDTH
     tool_alto = TOOL_DISPLAY_HEIGHT
@@ -165,6 +317,18 @@ def run_level2(dificultad, idioma, screen):
         delta_time = clock.tick(FPS) / 1000.0
 
         if not juego_finalizado:
+            # Actualizar enemigo distractor
+            enemigo.update(delta_time)
+            
+            # Lógica de aparición del enemigo
+            if not enemigo.activo:
+                enemigo_timer += delta_time
+                if enemigo_timer >= proxima_aparicion:
+                    enemigo.activar()
+                    enemigo_timer = 0.0
+                    # Calcular próxima aparición
+                    proxima_aparicion = random.uniform(enemigo_intervalo_min, enemigo_intervalo_max)
+            
             if success_flash_timer > 0:
                 success_flash_timer -= delta_time
                 if success_flash_timer < 0:
@@ -215,21 +379,38 @@ def run_level2(dificultad, idioma, screen):
                 elif evento.type == pygame.KEYDOWN and not juego_finalizado and objeto_reparado_timer == 0.0:
                     herramientas_list[index_seleccionado].seleccionada = False
 
-                    if evento.key in (pygame.K_s, pygame.K_DOWN):
+                    # Determinar si los controles están invertidos (solo en modo difícil cuando el enemigo está activo)
+                    controles_invertidos = es_modo_dificil and enemigo.activo and enemigo.invertir_controles
+                    
+                    # Mapeo de teclas según si están invertidas o no
+                    if controles_invertidos:
+                        # Controles invertidos: UP actúa como DOWN, LEFT actúa como RIGHT, etc.
+                        tecla_arriba = (pygame.K_s, pygame.K_DOWN)
+                        tecla_abajo = (pygame.K_w, pygame.K_UP)
+                        tecla_derecha = (pygame.K_a, pygame.K_LEFT)
+                        tecla_izquierda = (pygame.K_d, pygame.K_RIGHT)
+                    else:
+                        # Controles normales
+                        tecla_arriba = (pygame.K_w, pygame.K_UP)
+                        tecla_abajo = (pygame.K_s, pygame.K_DOWN)
+                        tecla_derecha = (pygame.K_d, pygame.K_RIGHT)
+                        tecla_izquierda = (pygame.K_a, pygame.K_LEFT)
+
+                    if evento.key in tecla_abajo:
                         if index_seleccionado + 2 < len(herramientas_list):
                             index_seleccionado = index_seleccionado + 2
                         else:
                             index_seleccionado = (index_seleccionado + 1) % len(herramientas_list)
-                    elif evento.key in (pygame.K_w, pygame.K_UP):
+                    elif evento.key in tecla_arriba:
                         if index_seleccionado - 2 >= 0:
                             index_seleccionado = index_seleccionado - 2
                         else:
                             index_seleccionado = (index_seleccionado - 1) % len(herramientas_list)
 
-                    elif evento.key in (pygame.K_d, pygame.K_RIGHT):
+                    elif evento.key in tecla_derecha:
                         if index_seleccionado % 2 == 0:
                             index_seleccionado = (index_seleccionado + 1) % len(herramientas_list)
-                    elif evento.key in (pygame.K_a, pygame.K_LEFT):
+                    elif evento.key in tecla_izquierda:
                         if index_seleccionado % 2 != 0:
                             index_seleccionado = (index_seleccionado - 1) % len(herramientas_list)
 
@@ -349,6 +530,9 @@ def run_level2(dificultad, idioma, screen):
             flash_surface = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
             flash_surface.fill(VERDE_TRANSPARENTE)
             screen.blit(flash_surface, (0, 0))
+        
+        # Dibujar enemigo distractor (sobre todo lo demás)
+        enemigo.draw(screen)
 
         if objeto_reparado_timer > 0.0:
             estado_texto = f"OBJETO REPARADO! Siguiente objeto en {int(objeto_reparado_timer) + 1} segundos..."
@@ -391,10 +575,12 @@ def run_level2(dificultad, idioma, screen):
     return "siguiente"
 
 if __name__ == '__main__':
+    pygame.init()
+    screen = pygame.display.set_mode((ANCHO, ALTO))
     accion = "iniciar"
     while accion != "salir_juego":
         if accion in ("iniciar", "reiniciar"):
-            accion = run_level2(dificultad=1, idioma="es", screen=screen)
+            accion = run_level2(dificultad="Normal", idioma="Español", screen=screen)
         elif accion == "salir_menu":
             accion = "salir_juego"
     pygame.quit()

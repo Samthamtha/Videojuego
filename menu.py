@@ -2,32 +2,23 @@ import pygame
 import sys
 import os
 import math
-import random # Necesario para la aleatoriedad del glitch
-import time # Necesario para la temporización del glitch
+import random  # Necesario para la aleatoriedad del glitch
 from settings import config_menu, idioma, dificultad, glitch_activado, volumen_musica, volumen_efectos
 from credits import show_credits
 
-# CONFIGURACIÓN GLOBAL DEL PYGAME MIXER
-pygame.mixer.init()
-pygame.mixer.music.load('sonido/inicio_musica.mp3')
-pygame.mixer.music.play(-1)
-pygame.mixer.music.set_volume(0.6)
-
-# Cargar sonidos de botones
-try:
-    sonido_seleccion = pygame.mixer.Sound("sonido/boton_selec.mp3")
-    sonido_ejecucion = pygame.mixer.Sound("sonido/boton_ejec.mp3")
-except pygame.error as e:
-    print(f"Error al cargar sonidos de botones: {e}")
-    sonido_seleccion = None
-    sonido_ejecucion = None
+# Variables globales para sonidos (se inicializan en run_menu)
+sonido_seleccion = None
+sonido_ejecucion = None
 
 # NUEVOS ASSETS DE GLITCH
+# Inicializar pygame.mixer antes de cargar sonidos
+SOUND_HORROR = None
 try:
+    pygame.mixer.init()
     #  Sonido de Horror (ahora se detiene automáticamente)
     SOUND_HORROR = pygame.mixer.Sound("sonido/inicio_horror.mp3") 
     SOUND_HORROR.set_volume(0.3) 
-except pygame.error as e:
+except (pygame.error, AttributeError) as e:
     print(f"ADVERTENCIA: No se pudo cargar el sonido 'inicio_horror.mp3'. {e}")
     SOUND_HORROR = None 
 
@@ -130,7 +121,28 @@ def run_menu(screen, dificultad, idioma):
     """Función principal del menú con efecto glitch."""
     
     # INICIALIZACIÓN DE VARIABLES Y ASSETS DEL MENÚ
-    global glitch_active # Hacemos referencia a la variable global
+    global glitch_active, sonido_seleccion, sonido_ejecucion
+    
+    # Inicializar mixer si no está inicializado
+    if not pygame.mixer.get_init():
+        try:
+            pygame.mixer.init()
+        except pygame.error as e:
+            print(f"Advertencia: No se pudo inicializar el mezclador de sonido. {e}")
+    
+    # Cargar sonidos de botones (solo si no están cargados)
+    if sonido_seleccion is None or sonido_ejecucion is None:
+        try:
+            # Importar volumen_efectos dentro de la función para evitar conflictos
+            from settings import volumen_efectos
+            sonido_seleccion = pygame.mixer.Sound("sonido/boton_selec.mp3")
+            sonido_ejecucion = pygame.mixer.Sound("sonido/boton_ejec.mp3")
+            sonido_seleccion.set_volume(volumen_efectos)
+            sonido_ejecucion.set_volume(volumen_efectos)
+        except pygame.error as e:
+            print(f"Error al cargar sonidos de botones: {e}")
+            sonido_seleccion = None
+            sonido_ejecucion = None
 
     if not pygame.font.get_init():
         pygame.font.init()
@@ -253,7 +265,9 @@ def run_menu(screen, dificultad, idioma):
                     if opcion == "Iniciar Juego":
                         return "jugar", dificultad, idioma
                     elif opcion == "Configuración":
-                        config_menu(idioma, dificultad, screen)
+                        resultado = config_menu(idioma, dificultad, screen)
+                        if resultado:
+                            idioma, dificultad = resultado
                         # Actualizar volúmenes después de salir de configuración
                         from settings import volumen_musica, volumen_efectos
                         pygame.mixer.music.set_volume(volumen_musica)
