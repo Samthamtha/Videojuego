@@ -36,11 +36,12 @@ COLOR_CUADRO_SELECCIONADO = (255, 170, 0)  # Naranja/Amarillo para selección de
 
 # --- DATOS DE ETAPAS ---
 # IMPORTANTE: Se ha añadido "return_key" para que el bucle principal sepa qué función llamar.
+# Se añadió "preview_image" para la imagen de vista previa
 ETAPAS = [
-    {"short": "ETAPA 1", "long": "LIMPIEZA DEL RÍO", "return_key": "level1"},
-    {"short": "ETAPA 2", "long": "REPARACIÓN DE OBJETOS", "return_key": "level2"},
-    {"short": "ETAPA 3", "long": "FÁBRICA DE REVALORIZACIÓN", "return_key": "level3"},
-    {"short": "ETAPA FINAL", "long": "BATALLA FINAL", "return_key": "level_final"},
+    {"short": "ETAPA 1", "long": "LIMPIEZA DEL RÍO", "return_key": "level1", "preview_image": "img/rio.png"},
+    {"short": "ETAPA 2", "long": "REPARACIÓN DE OBJETOS", "return_key": "level2", "preview_image": None},
+    {"short": "ETAPA 3", "long": "FÁBRICA DE REVALORIZACIÓN", "return_key": "level3", "preview_image": None},
+    {"short": "ETAPA FINAL", "long": "BATALLA FINAL", "return_key": "level_final", "preview_image": None},
 ]
 dificultad = ["Fácil", "Normal", "Difícil"]
 BUTTON_H = 55 # Altura estándar de botones largos
@@ -57,8 +58,12 @@ def draw_button_long(screen, rect, text, is_active, base_color=COLOR_BUTTON_BASE
     # 1. Dibujar el cuerpo principal
     pygame.draw.rect(screen, color, rect, border_radius=8)
     
-    # 2. Dibujar un borde sutil para profundidad (opcional)
-    pygame.draw.rect(screen, COLOR_TEXT_DARK, rect, 3, border_radius=8)
+    # 2. Dibujar borde blanco grueso si está activo (NUEVO)
+    if is_active:
+        pygame.draw.rect(screen, COLOR_TEXT_NORMAL, rect, 4, border_radius=8)
+    else:
+        # Borde sutil normal
+        pygame.draw.rect(screen, COLOR_TEXT_DARK, rect, 3, border_radius=8)
     
     # 3. Dibujar texto
     text_surface = FONT_BUTTON.render(text, True, COLOR_TEXT_DARK)
@@ -82,8 +87,8 @@ def draw_stage_quad(screen, rect, text_short, is_selected):
     text_rect = text_surface.get_rect(centerx=rect.centerx, centery=rect.centery)
     screen.blit(text_surface, text_rect)
 
-def draw_preview_panel(screen, rect, stage_info):
-    """Dibuja el cuadro grande de vista previa."""
+def draw_preview_panel(screen, rect, stage_info, preview_image_path):
+    """Dibuja el cuadro grande de vista previa con imagen si está disponible."""
     
     # 1. Fondo (simulando un recuadro de vista del nivel)
     surface = pygame.Surface(rect.size, pygame.SRCALPHA)
@@ -93,8 +98,40 @@ def draw_preview_panel(screen, rect, stage_info):
     # 2. Borde Blanco
     pygame.draw.rect(screen, COLOR_TEXT_NORMAL, rect, 3)
 
-    # 3. Texto de simulación del escenario (reemplaza la imagen)
-    # Se muestra el nombre largo como vista previa
+    # 3. Intentar cargar y mostrar la imagen si existe
+    if preview_image_path:
+        try:
+            preview_img = pygame.image.load(preview_image_path).convert()
+            # Escalar la imagen para que quepa en el rectángulo con un margen
+            img_rect = preview_img.get_rect()
+            # Calcular escala manteniendo aspecto
+            scale_w = (rect.width - 20) / img_rect.width
+            scale_h = (rect.height - 60) / img_rect.height
+            scale = min(scale_w, scale_h)
+            
+            new_width = int(img_rect.width * scale)
+            new_height = int(img_rect.height * scale)
+            preview_img = pygame.transform.scale(preview_img, (new_width, new_height))
+            
+            # Centrar la imagen en el rectángulo
+            img_x = rect.x + (rect.width - new_width) // 2
+            img_y = rect.y + 40  # Dejar espacio arriba para el texto
+            screen.blit(preview_img, (img_x, img_y))
+            
+            # Texto arriba de la imagen
+            text_line1 = FONT_ETAPA.render("VISTA PREVIA:", True, COLOR_TEXT_NORMAL)
+            screen.blit(text_line1, (rect.x + 15, rect.y + 10))
+            
+        except pygame.error as e:
+            print(f"Error al cargar imagen de vista previa '{preview_image_path}': {e}")
+            # Si falla, mostrar texto como antes
+            draw_preview_text_fallback(screen, rect, stage_info)
+    else:
+        # Si no hay imagen, mostrar texto
+        draw_preview_text_fallback(screen, rect, stage_info)
+
+def draw_preview_text_fallback(screen, rect, stage_info):
+    """Dibuja texto de vista previa cuando no hay imagen."""
     text_line1 = FONT_ETAPA.render("VISTA PREVIA:", True, COLOR_TEXT_NORMAL)
     screen.blit(text_line1, (rect.x + 15, rect.y + 15))
     
@@ -112,11 +149,14 @@ def draw_difficulty_control(screen, rect, difficulty, is_active):
     # 1. Fondo
     pygame.draw.rect(screen, color_fondo, rect, border_radius=8)
     
-    # 2. Borde
-    pygame.draw.rect(screen, COLOR_TEXT_DARK, rect, 3, border_radius=8)
+    # 2. Borde blanco grueso si está activo (NUEVO)
+    if is_active:
+        pygame.draw.rect(screen, COLOR_TEXT_NORMAL, rect, 4, border_radius=8)
+    else:
+        pygame.draw.rect(screen, COLOR_TEXT_DARK, rect, 3, border_radius=8)
     
     # 3. Texto de dificultad
-    texto = f"<< DIFICULTAD: {difficulty} >>"
+    texto = f"<< {difficulty} >>"
     text_surface = FONT_DIFF.render(texto, True, COLOR_TEXT_DARK)
     text_rect = text_surface.get_rect(center=rect.center)
     screen.blit(text_surface, text_rect)
@@ -139,10 +179,10 @@ def run_level_select(screen, dificultad_actual, idioma):
         # Si la imagen no carga, solo imprimimos el error y usamos el fondo oscuro
         print(f"Error al cargar la imagen de fondo 'img/pibble_fondo2.png': {e}")
         
-    # Overlay semi-transparente para dar contraste (Negro al 70%)
+    # Overlay semi-transparente MUY LIGERO para dar contraste (Negro al 15%)
     overlay = pygame.Surface((screen_width, screen_height)).convert_alpha()
     overlay.fill(COLOR_TEXT_DARK) 
-    overlay.set_alpha(180) 
+    overlay.set_alpha(40)  # Reducido de 180 a 40 para ver mejor el fondo 
 
     # --- ESTADO DE NAVEGACIÓN ---
     # Manejo de la dificultad inicial
@@ -163,9 +203,9 @@ def run_level_select(screen, dificultad_actual, idioma):
     title_surface = FONT_TITLE.render(title_text, True, COLOR_TEXT_HIGHLIGHT)
     title_rect = title_surface.get_rect(centerx=screen_width // 2, top=40)
 
-    # Cuadros de etapa (arriba)
-    ETAPA_W, ETAPA_H = 150, 120
-    ETAPA_SPACING = 30
+    # Cuadros de etapa (arriba) - MÁS GRANDES
+    ETAPA_W, ETAPA_H = 200, 150  # Aumentado de 150x120 a 200x150
+    ETAPA_SPACING = 35  # Aumentado de 30 a 35
     total_etapa_width = len(ETAPAS) * ETAPA_W + (len(ETAPAS) - 1) * ETAPA_SPACING
     
     # Ajustamos la posición X para que todo el contenido esté centrado
@@ -179,8 +219,8 @@ def run_level_select(screen, dificultad_actual, idioma):
     # Área principal de contenido (preview y opciones)
     CONTENT_Y = etapa_rects[0].bottom + 40
     
-    # Vista Previa (Izquierda)
-    PREVIEW_W, PREVIEW_H = 350, 250
+    # Vista Previa (Izquierda) - MÁS GRANDE
+    PREVIEW_W, PREVIEW_H = 450, 320  # Aumentado de 350x250 a 450x320
     preview_rect = pygame.Rect(start_content_x, CONTENT_Y, PREVIEW_W, PREVIEW_H)
     
     # Área de Opciones (Derecha)
@@ -188,22 +228,22 @@ def run_level_select(screen, dificultad_actual, idioma):
     # Ajuste del ancho para que el contenido sea simétrico con el inicio del contenido
     OPTIONS_W = (screen_width - OPTIONS_X) - (start_content_x - 10) 
     
-    # Panel de Información (Nombre largo de la etapa - el primer rectángulo largo)
-    info_panel_h = 45 
+    # Panel de Información (Nombre largo de la etapa) - MÁS ALTO
+    info_panel_h = 60  # Aumentado de 45 a 60
     info_panel_y = CONTENT_Y
     info_panel_rect = pygame.Rect(OPTIONS_X, info_panel_y, OPTIONS_W, info_panel_h)
     
-    # Botón JUGAR
+    # Botón JUGAR - MÁS ALTO
     JUGAR_Y = info_panel_rect.bottom + BUTTON_H // 2 
-    jugar_rect = pygame.Rect(OPTIONS_X, JUGAR_Y, OPTIONS_W, BUTTON_H)
+    jugar_rect = pygame.Rect(OPTIONS_X, JUGAR_Y, OPTIONS_W, BUTTON_H + 10)  # +10 más alto
     
-    # Botón DIFICULTAD
+    # Botón DIFICULTAD - MÁS ALTO
     DIFICULTAD_Y = jugar_rect.bottom + BUTTON_SPACING
-    dificultad_rect = pygame.Rect(OPTIONS_X, DIFICULTAD_Y, OPTIONS_W, BUTTON_H)
+    dificultad_rect = pygame.Rect(OPTIONS_X, DIFICULTAD_Y, OPTIONS_W, BUTTON_H + 10)  # +10 más alto
     
-    # Botón VOLVER
+    # Botón VOLVER - MÁS ALTO
     VOLVER_Y = dificultad_rect.bottom + BUTTON_SPACING
-    volver_rect = pygame.Rect(OPTIONS_X, VOLVER_Y, OPTIONS_W, BUTTON_H)
+    volver_rect = pygame.Rect(OPTIONS_X, VOLVER_Y, OPTIONS_W, BUTTON_H + 10)  # +10 más alto
     
     # Lista de rectángulos de botones principales para la navegación vertical
     main_button_rects = [jugar_rect, dificultad_rect, volver_rect]
@@ -275,12 +315,12 @@ def run_level_select(screen, dificultad_actual, idioma):
             is_selected = (i == selected_etapa_index)
             draw_stage_quad(screen, etapa_rects[i], etapa_data["short"], is_selected)
         
-        # 4. Dibujar VISTA PREVIA (IZQUIERDA)
-        draw_preview_panel(screen, preview_rect, etapa_actual["long"])
+        # 4. Dibujar VISTA PREVIA (IZQUIERDA) - Ahora con imagen
+        draw_preview_panel(screen, preview_rect, etapa_actual["long"], etapa_actual.get("preview_image"))
 
-        # 5. Dibujar PANEL DE INFORMACIÓN (Primer rectángulo largo: Nombre Completo)
+        # 5. Dibujar PANEL DE INFORMACIÓN (Solo el nombre del nivel, sin "ETAPA X:")
         draw_button_long(screen, info_panel_rect, 
-                         f"{etapa_actual['short']}: {etapa_actual['long']}", 
+                         etapa_actual['long'],  # CAMBIADO: Solo muestra el nombre
                          False, 
                          (180, 180, 180)) # Color gris claro para panel informativo
 
@@ -301,4 +341,4 @@ def run_level_select(screen, dificultad_actual, idioma):
         clock.tick(60)
     
     # Fallback
-    return "menu", DIFICULTADES[selected_difficulty_index], idioma
+    return "menu", dificultad[selected_difficulty_index], idioma
