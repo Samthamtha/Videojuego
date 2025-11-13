@@ -63,46 +63,14 @@ Para asegurar que el juego cumple sus objetivos educativos y es genuinamente div
 1.  **Prueba de Campo:** Se realizará una sesión de juego supervisada en una escuela primaria con niños y niñas del rango de edad objetivo (6-12 años).
 2.  **Encuesta General:** Inmediatamente después de la prueba de campo, se aplicará una encuesta a los participantes para recolectar retroalimentación cualitativa y cuantitativa.
 
-### Métrica de la Encuesta
+### Métrica de la Encuesta para niños
 
 La encuesta se centrará en responder las siguientes preguntas:
 
-Jugabilidad 
-1. ¿Fue fácil entender cómo se juega? 
-☐ Sí  ☐ Más o menos  ☐ No 
-2. ¿Los controles (teclas o movimientos) fueron fáciles de usar? 
-☐ Sí ☐ No  ☐ A veces  
-Diversión 
-3. En una escala del 1 al 5, ¿qué tan divertido te pareció el juego? 
-� 1 = Nada divertido  � 5 = Muy divertido 
-☐ 1 ☐ 2 ☐ 3 ☐ 4 ☐ 5 
-4. ¿Qué parte del juego te gustó más? 
-☐ Atrapar la basura en el río ☐ Reparar objetos ☐ Transformar la basura en nuevos objetos ☐ Otra (¿cuál?): _____________________________ 
-Diseño visual 
-5. ¿Te gustaron los colores, dibujos y personajes del juego? 
-☐ Sí, mucho ☐ Están bien ☐ No mucho 
-6. Si pudieras cambiar algo del diseño, ¿qué sería? (Por ejemplo: colores, personajes, 
-fondo, etc.) 
-✍
- ️ ______________________________________________________ 
-Dificultad 
-7. ¿El juego te pareció…? 
-☐ Muy fácil ☐ Justo ☐ Muy difícil 
-8. ¿Hubo alguna parte que no entendiste o te costó pasar? 
-✍
- ️ ______________________________________________________ 
-Aprendizaje 
-9. Después de jugar, ¿aprendiste algo nuevo sobre cómo cuidar el planeta o las 7R? 
-☐ Sí ☐ Un poco ☐ No 
-10. Cuéntanos una cosa que aprendiste o recordaste gracias al juego. 
-✍
- ️ ______________________________________________________ 
-Sugerencias 
-11. ¿Qué cambiarías o mejorarías del juego? 
-✍
- ️ ______________________________________________________ 
-12. ¿Te gustaría jugar más niveles parecidos? 
-☐ Sí ☐ Tal vez ☐ No 
+1. ¿Qué fue lo más divertido del juego? 
+2. ¿Que mensaje te dio a entender el juego y que aprendiste? 
+3. ¿Fue fácil jugar? ¿Pudiste usar los botones, las fichas o las piezas sin que nadie te ayudara?
+4. Si pudieras cambiar o agregar una cosa al juego para que fuera más increíble, ¿qué sería? 
 
 ---
 
