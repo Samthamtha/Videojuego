@@ -1,3 +1,4 @@
+# level3.py
 import pygame
 import sys
 import random
@@ -16,7 +17,7 @@ try:
     BACKGROUND_IMAGE = pygame.image.load("img/fondo_nivel3.png").convert()
     BACKGROUND_IMAGE = pygame.transform.scale(BACKGROUND_IMAGE, (WIDTH, HEIGHT))
     USE_BACKGROUND_IMAGE = True
-except pygame.error as e:
+except Exception as e:
     print(f"Advertencia: No se pudo cargar la imagen de fondo: {e}")
     USE_BACKGROUND_IMAGE = False
 
@@ -82,23 +83,26 @@ class Particle:
         if self.lifetime > 0:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size)
 
-# FUNCIONES DE IMÁGENES Y DATOS
-def create_item_sprite(color, size, shape='rect'):
-    surface = pygame.Surface((size, size), pygame.SRCALPHA)
-    if shape == 'rect':
-        pygame.draw.rect(surface, color, (0, 0, size, size), 0, 5)
-    elif shape == 'circle':
-        pygame.draw.circle(surface, color, (size // 2, size // 2), size // 2)
-    return surface
+# RUTAS DE IMAGENES SEGÚN TUS ARCHIVOS
+FILE_MAP = {
+    'BOTELLA PET': {
+        'orig': "img/botella.png",
+        'trit': "img/botella_triturada.png",
+        'final': "img/bloques.png"   # ladrillos (LADRILLOS_DE_JUGUETE)
+    },
+    'LATA ALUMINIO': {
+        'orig': "img/Lata.png",
+        'trit': "img/lata_triturada.png",
+        'final': "img/Sarten.png"    # sartén reciclada
+    },
+    'PERIODICO': {
+        'orig': "img/periodico.png",
+        'trit': "img/periodico_triturado.png",
+        'final': "img/Cascara_huevo.png"   # usa Cascara.png según tu lista (cámbialo si quieres otro)
+    }
+}
 
-def create_large_final_sprite(color, name):
-    size = int(ITEM_SIZE * 2.0)
-    surface = pygame.Surface((size, size), pygame.SRCALPHA)
-    pygame.draw.rect(surface, color, (0, 0, size, size), 0, 10)
-    text_surface = font_small.render(name.split(' ')[0], True, BLACK)
-    surface.blit(text_surface, (size // 2 - text_surface.get_width() // 2, size // 2 - text_surface.get_height() // 2))
-    return surface
-
+# Datos de transformación (texto / metadatos)
 TRANSFORM_DATA = {
     'BOTELLA PET': { 'color_orig': BLUE_ORIG, 'shape_orig': 'rect', 'color_trit': RED_TRIT, 'shape_trit': 'circle', 'nombre_final': "LADRILLOS DE JUGUETE", 'color_final': GREEN_FINAL },
     'LATA ALUMINIO': { 'color_orig': (200, 200, 200), 'shape_orig': 'circle', 'color_trit': (100, 100, 100), 'shape_trit': 'rect', 'nombre_final': "SARTÉN RECICLADA", 'color_final': (255, 140, 0) },
@@ -106,12 +110,35 @@ TRANSFORM_DATA = {
 }
 TRANSFORM_TYPES = list(TRANSFORM_DATA.keys())
 
+# FUNCION AUXILIAR PARA CARGAR UNA IMAGEN CON FALLBACK
+def load_image_safe(path, size=None, fallback_color=(180,180,180)):
+    try:
+        img = pygame.image.load(path).convert_alpha()
+        if size:
+            img = pygame.transform.scale(img, size)
+        return img
+    except Exception as e:
+        # fallback: surface con color y etiqueta pequeña
+        w, h = size if size else (ITEM_SIZE, ITEM_SIZE)
+        s = pygame.Surface((w,h), pygame.SRCALPHA)
+        s.fill(fallback_color)
+        try:
+            # escribe el nombre de archivo corto si cabe
+            smallf = pygame.font.SysFont(None, 16)
+            label = smallf.render(path.split('/')[-1], True, (0,0,0))
+            s.blit(label, (4,4))
+        except Exception:
+            pass
+        return s
+
+# CARGA DE IMÁGENES REALES (original, triturada y finales)
 IMAGES = {}
-for name, data in TRANSFORM_DATA.items():
-    IMAGES[name] = create_item_sprite(data['color_orig'], ITEM_SIZE, data['shape_orig'])
-    IMAGES[name + '_TRIT'] = create_item_sprite(data['color_trit'], ITEM_SIZE, data['shape_trit'])
-    IMAGES[name + '_FINAL_GRANDE'] = create_large_final_sprite(data['color_final'], data['nombre_final'])
-    IMAGES[name + '_FINAL_PEQUE'] = create_item_sprite(data['color_final'], ITEM_SIZE, 'rect')
+for tipo in TRANSFORM_TYPES:
+    fm = FILE_MAP.get(tipo, {})
+    IMAGES[tipo] = load_image_safe(fm.get('orig', ''), (ITEM_SIZE, ITEM_SIZE))
+    IMAGES[tipo + '_TRIT'] = load_image_safe(fm.get('trit', ''), (ITEM_SIZE, ITEM_SIZE))
+    IMAGES[tipo + '_FINAL_GRANDE'] = load_image_safe(fm.get('final', ''), (ITEM_SIZE*2, ITEM_SIZE*2))
+    IMAGES[tipo + '_FINAL_PEQUE'] = load_image_safe(fm.get('final', ''), (ITEM_SIZE, ITEM_SIZE))
 
 # CLASES Item y ConveyorBelt 
 class Item(pygame.sprite.Sprite):
@@ -127,12 +154,15 @@ class Item(pygame.sprite.Sprite):
         self.update_image()
 
     def update_image(self):
+        # Usa las imágenes cargadas desde IMAGES (archivos reales o fallback)
         if self.state == 'ORIG':
-            self.image = IMAGES[self.tipo]
+            self.image = IMAGES.get(self.tipo, IMAGES.get(self.tipo + '_TRIT', pygame.Surface((ITEM_SIZE,ITEM_SIZE))))
         elif self.state == 'TRIT':
-            self.image = IMAGES[self.tipo + '_TRIT']
+            self.image = IMAGES.get(self.tipo + '_TRIT', IMAGES.get(self.tipo, pygame.Surface((ITEM_SIZE,ITEM_SIZE))))
         elif self.state == 'FINAL':
-            self.image = IMAGES[self.tipo + '_FINAL_PEQUE']
+            self.image = IMAGES.get(self.tipo + '_FINAL_PEQUE', IMAGES.get(self.tipo, pygame.Surface((ITEM_SIZE,ITEM_SIZE))))
+        else:
+            self.image = pygame.Surface((ITEM_SIZE, ITEM_SIZE))
         self.rect.size = self.image.get_size()
 
     def update(self, direction='right'):
@@ -151,7 +181,9 @@ class Item(pygame.sprite.Sprite):
 
     def triturar(self):
         self.state = 'TRIT'
+        # actualiza imagen y lo posiciona para el trayecto hacia transform
         self.update_image()
+        # empuja fuera de la vista para que la animación funcione (como antes)
         self.rect.x = -ITEM_SIZE * 2
 
     def transform_to_final(self):
@@ -188,12 +220,14 @@ def show_inspection_screen(screen, item):
     text_title = font_large.render("¡OBJETO REVALORIZADO!", True, BLACK)
     screen.blit(text_title, (box_rect.centerx - text_title.get_width() // 2, box_rect.y + 30))
 
-    img_final_grande = IMAGES[item.tipo + '_FINAL_GRANDE']
-    img_rect = img_final_grande.get_rect(center=(box_rect.centerx, box_rect.y + 150))
-    screen.blit(img_final_grande, img_rect)
+    # imagen final grande: si falta, IMAGES contiene fallback
+    img_final_grande = IMAGES.get(item.tipo + '_FINAL_GRANDE')
+    if img_final_grande:
+        img_rect = img_final_grande.get_rect(center=(box_rect.centerx, box_rect.y + 150))
+        screen.blit(img_final_grande, img_rect)
 
-    text_name = font_large.render(item.data['nombre_final'], True, item.data['color_final'])
-    screen.blit(text_name, (box_rect.centerx - text_name.get_width() // 2, img_rect.bottom + 20))
+    text_name = font_large.render(item.data.get('nombre_final', "OBJETO"), True, item.data.get('color_final', BLACK))
+    screen.blit(text_name, (box_rect.centerx - text_name.get_width() // 2, box_rect.bottom - 90))
 
     text_continue = font.render("Presiona E para continuar...", True, BLACK)
     screen.blit(text_continue, (box_rect.centerx - text_continue.get_width() // 2, box_rect.bottom - 40))
@@ -245,7 +279,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pygame.event.clear()
-                    accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH, idioma)
+                    accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
                     if accion == "salir_juego":
                         return "salir_juego"
                     elif accion == "reiniciar":
@@ -259,7 +293,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                             is_grinding = True
                             grind_start_time = pygame.time.get_ticks()
                             current_item.rect.x = -5000
-                            p_color = current_item.data['color_orig']
+                            p_color = current_item.data.get('color_orig', (255,255,255))
                             p_center_x = GRINDER_X + (GRINDER_WIDTH // 3)
                             p_center_y = CONVEYOR_TOP_Y + CONVEYOR_HEIGHT // 2
                             for _ in range(30):
@@ -281,13 +315,16 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
 
             spawn_timer += 1
 
-            for item in all_items:
+            for item in list(all_items):
                 if item.state == 'ORIG':
                     if not is_grinding:
                         if item.rect.right < GRINDER_STOP_X:
                             item.update()
                         else:
                             item.rect.right = GRINDER_STOP_X
+                    # keep current_item reference consistent
+                    if current_item is None:
+                        current_item = item
                 elif item.state == 'TRIT':
                     if not is_transforming:
                         if item.rect.x < TRANSFORM_STOP_X:
@@ -314,6 +351,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                                 output_items.append(item)
                                 all_items.remove(item)
                                 current_item = None
+                                item_inspected = False
                             elif accion == "salir_juego":
                                 return "salir_juego"
                             elif accion == "salir_menu":
@@ -325,8 +363,10 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 elapsed_time = pygame.time.get_ticks() - grind_start_time
                 if elapsed_time >= GRIND_TIME:
                     is_grinding = False
-                    current_item.triturar()
-                    contador_triturados += 1
+                    # seguridad: si current_item existe, triturar
+                    if current_item:
+                        current_item.triturar()
+                        contador_triturados += 1
 
             particles = [p for p in particles if p.lifetime > 0]
             for p in particles:
