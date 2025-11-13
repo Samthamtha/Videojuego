@@ -1,5 +1,6 @@
 import pygame
 import sys
+from translations import get_text
 
 # --- INICIALIZACIÓN DE FUENTES (CORRECCIÓN DE ERROR) ---
 # Se verifica si el módulo de fuentes ha sido inicializado.
@@ -43,7 +44,7 @@ ETAPAS = [
     {"short": "ETAPA 3", "long": "FÁBRICA DE REVALORIZACIÓN", "return_key": "level3", "preview_image": None},
     {"short": "ETAPA FINAL", "long": "BATALLA FINAL", "return_key": "level_final", "preview_image": None},
 ]
-dificultad = ["Fácil", "Normal", "Difícil"]
+dificultad = ["Principiante", "Intermedio", "Profesional"]
 BUTTON_H = 55 # Altura estándar de botones largos
 BUTTON_SPACING = 20 # Espacio vertical entre botones
 
@@ -87,7 +88,7 @@ def draw_stage_quad(screen, rect, text_short, is_selected):
     text_rect = text_surface.get_rect(centerx=rect.centerx, centery=rect.centery)
     screen.blit(text_surface, text_rect)
 
-def draw_preview_panel(screen, rect, stage_info, preview_image_path):
+def draw_preview_panel(screen, rect, stage_info, preview_image_path, idioma="Español"):
     """Dibuja el cuadro grande de vista previa con imagen si está disponible."""
     
     # 1. Fondo (simulando un recuadro de vista del nivel)
@@ -119,20 +120,20 @@ def draw_preview_panel(screen, rect, stage_info, preview_image_path):
             screen.blit(preview_img, (img_x, img_y))
             
             # Texto arriba de la imagen
-            text_line1 = FONT_ETAPA.render("VISTA PREVIA:", True, COLOR_TEXT_NORMAL)
+            text_line1 = FONT_ETAPA.render(get_text("VISTA PREVIA:", idioma), True, COLOR_TEXT_NORMAL)
             screen.blit(text_line1, (rect.x + 15, rect.y + 10))
             
         except pygame.error as e:
             print(f"Error al cargar imagen de vista previa '{preview_image_path}': {e}")
             # Si falla, mostrar texto como antes
-            draw_preview_text_fallback(screen, rect, stage_info)
+            draw_preview_text_fallback(screen, rect, stage_info, idioma)
     else:
         # Si no hay imagen, mostrar texto
-        draw_preview_text_fallback(screen, rect, stage_info)
+        draw_preview_text_fallback(screen, rect, stage_info, idioma)
 
-def draw_preview_text_fallback(screen, rect, stage_info):
+def draw_preview_text_fallback(screen, rect, stage_info, idioma="Español"):
     """Dibuja texto de vista previa cuando no hay imagen."""
-    text_line1 = FONT_ETAPA.render("VISTA PREVIA:", True, COLOR_TEXT_NORMAL)
+    text_line1 = FONT_ETAPA.render(get_text("VISTA PREVIA:", idioma), True, COLOR_TEXT_NORMAL)
     screen.blit(text_line1, (rect.x + 15, rect.y + 15))
     
     # Ajustar el texto largo para que quepa bien en el panel de previsualización
@@ -199,7 +200,7 @@ def run_level_select(screen, dificultad_actual, idioma):
     # --- POSICIONAMIENTO DE LA UI (Calculado dinámicamente) ---
     
     # Título "SELECCIONA LA ETAPA"
-    title_text = "SELECCIONA LA ETAPA"
+    title_text = get_text("SELECCIONA LA ETAPA", idioma)
     title_surface = FONT_TITLE.render(title_text, True, COLOR_TEXT_HIGHLIGHT)
     title_rect = title_surface.get_rect(centerx=screen_width // 2, top=40)
 
@@ -276,7 +277,7 @@ def run_level_select(screen, dificultad_actual, idioma):
                 
                 elif event.key in (pygame.K_RIGHT, pygame.K_d):
                     if selected_main_button == 1: # Si estamos en Dificultad
-                        # Cambia dificultad: Mueve hacia la derecha (dificultad más difícil)
+                        # Cambia dificultad: Mueve hacia la derecha (dificultad más avanzada)
                         selected_difficulty_index = (selected_difficulty_index + 1) % len(dificultad)
                     else: # Si estamos en JUGAR o VOLVER, cambia la etapa
                         # Cambia etapa: Mueve hacia la derecha
@@ -313,21 +314,24 @@ def run_level_select(screen, dificultad_actual, idioma):
         etapa_actual = ETAPAS[selected_etapa_index]
         for i, etapa_data in enumerate(ETAPAS):
             is_selected = (i == selected_etapa_index)
-            draw_stage_quad(screen, etapa_rects[i], etapa_data["short"], is_selected)
+            # Traducir el nombre corto de la etapa
+            etapa_short_traducido = get_text(etapa_data["short"], idioma)
+            draw_stage_quad(screen, etapa_rects[i], etapa_short_traducido, is_selected)
         
         # 4. Dibujar VISTA PREVIA (IZQUIERDA) - Ahora con imagen
-        draw_preview_panel(screen, preview_rect, etapa_actual["long"], etapa_actual.get("preview_image"))
+        draw_preview_panel(screen, preview_rect, etapa_actual["long"], etapa_actual.get("preview_image"), idioma)
 
         # 5. Dibujar PANEL DE INFORMACIÓN (Solo el nombre del nivel, sin "ETAPA X:")
+        etapa_nombre_traducido = get_text(etapa_actual['long'], idioma)
         draw_button_long(screen, info_panel_rect, 
-                         etapa_actual['long'],  # CAMBIADO: Solo muestra el nombre
+                         etapa_nombre_traducido,  # CAMBIADO: Solo muestra el nombre traducido
                          False, 
                          (180, 180, 180)) # Color gris claro para panel informativo
 
         # 6. Dibujar Botones JUGAR, DIFICULTAD, VOLVER
         
         # Botón JUGAR
-        draw_button_long(screen, jugar_rect, "JUGAR", selected_main_button == 0)
+        draw_button_long(screen, jugar_rect, get_text("JUGAR", idioma), selected_main_button == 0)
         
         # Botón DIFICULTAD
         draw_difficulty_control(screen, dificultad_rect, 
@@ -335,7 +339,7 @@ def run_level_select(screen, dificultad_actual, idioma):
                                 selected_main_button == 1)
         
         # Botón VOLVER
-        draw_button_long(screen, volver_rect, "VOLVER", selected_main_button == 2)
+        draw_button_long(screen, volver_rect, get_text("VOLVER", idioma), selected_main_button == 2)
 
         pygame.display.flip()
         clock.tick(60)

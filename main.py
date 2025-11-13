@@ -47,7 +47,7 @@ def main():
     screen = pygame.display.set_mode((ANCHO, ALTO))
     pygame.display.set_caption("Juego del Río")
 
-    dificultad = "Normal"
+    dificultad = "Intermedio"
     idioma = "Español"
 
     # Música inicial del menú

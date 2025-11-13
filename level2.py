@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 from pause import mostrar_menu_pausa
 from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
+from translations import get_text
 
 # ================== RUTAS ROBUSTAS ==================
 BASE_DIR = Path(__file__).resolve().parent
@@ -151,10 +152,10 @@ class EnemigoDistractor:
             "¡MIRE AQUÍ!",
             "¡JA JA JA!"
         ]
-        self.mensajes_dificil = [
+        self.mensajes_profesional = [
             "¡CONTROLES INVERTIDOS!",
             "¡JAJAJA!",
-            "¡AHORA ES DIFÍCIL!",
+            "¡AHORA ES PROFESIONAL!",
             "¡MUAHAHA!",
             "¡TE CONFUNDO!",
             "¡JA JA JA!"
@@ -177,7 +178,7 @@ class EnemigoDistractor:
             
             # Mensaje aleatorio (diferente si invierte controles)
             if self.invertir_controles:
-                self.mensaje_actual = random.choice(self.mensajes_dificil)
+                self.mensaje_actual = random.choice(self.mensajes_profesional)
             else:
                 self.mensaje_actual = random.choice(self.mensajes)
             
@@ -272,17 +273,17 @@ def run_level2(dificultad, idioma, screen):
     # ================== SISTEMA DE ENEMIGO DISTRACTOR ==================
     enemigo = EnemigoDistractor(ANCHO, ALTO)
     enemigo_timer = 0.0
-    es_modo_dificil = dificultad.lower() in ["difícil", "dificil"]
+    es_modo_profesional = dificultad.lower() in ["profesional"]
     # Tiempo entre apariciones (ajustable según dificultad)
-    if dificultad.lower() in ["fácil", "facil"]:
+    if dificultad.lower() in ["principiante"]:
         enemigo_intervalo_min = 8.0  # Aparece cada 8-12 segundos
         enemigo_intervalo_max = 12.0
-    elif es_modo_dificil:
+    elif es_modo_profesional:
         enemigo_intervalo_min = 4.0  # Aparece cada 4-6 segundos (más frecuente)
         enemigo_intervalo_max = 6.0
-        # En modo difícil, el enemigo invierte los controles
+        # En modo profesional, el enemigo invierte los controles
         enemigo.invertir_controles = True
-    else:  # Normal - Apariciones más frecuentes
+    else:  # Intermedio - Apariciones más frecuentes
         enemigo_intervalo_min = 3.5  # Aparece cada 3.5-5.5 segundos (más frecuente)
         enemigo_intervalo_max = 5.5
     
@@ -340,7 +341,7 @@ def run_level2(dificultad, idioma, screen):
             if tiempo_restante <= 0:
                 tiempo_restante = 0
                 juego_finalizado = True
-                mensaje_feedback = "¡TIEMPO AGOTADO!"
+                mensaje_feedback = get_text("¡TIEMPO AGOTADO!", idioma)
 
             if mensaje_timer > 0:
                 mensaje_timer -= delta_time
@@ -355,22 +356,24 @@ def run_level2(dificultad, idioma, screen):
                     etapa_actual = 0
                     if objeto_actual_index >= len(OBJETOS):
                         juego_finalizado = True
-                        mensaje_feedback = "¡NIVEL COMPLETADO!"
+                        mensaje_feedback = get_text("¡NIVEL COMPLETADO!", idioma)
                         mensaje_timer = 3.0
                     else:
-                        mensaje_feedback = f"Continúa con: {OBJETOS[objeto_actual_index]}"
+                        objeto_nombre = OBJETOS[objeto_actual_index]
+                        objeto_nombre_traducido = get_text(objeto_nombre, idioma) if objeto_nombre in ["Osito de Peluche Roto", "Silla Rota", "Figura de Madera Rota"] else objeto_nombre
+                        mensaje_feedback = f"{get_text('Continúa con: ', idioma)}{objeto_nombre_traducido}"
                         mensaje_timer = 2.0
 
             if vidas <= 0 and not juego_finalizado:
                 juego_finalizado = True
-                mensaje_feedback = "¡SIN VIDAS! JUEGO TERMINADO"
+                mensaje_feedback = get_text("¡SIN VIDAS! JUEGO TERMINADO", idioma)
 
             for evento in pygame.event.get():
                 if evento.type == pygame.QUIT:
                     return "salir_juego"
 
                 elif evento.type == pygame.KEYDOWN and evento.key == pygame.K_ESCAPE:
-                    accion = mostrar_menu_pausa(screen, ALTO, ANCHO)
+                    accion = mostrar_menu_pausa(screen, ALTO, ANCHO, idioma)
                     if accion == "reiniciar":
                         return "reiniciar"
                     elif accion == "salir":
@@ -379,8 +382,8 @@ def run_level2(dificultad, idioma, screen):
                 elif evento.type == pygame.KEYDOWN and not juego_finalizado and objeto_reparado_timer == 0.0:
                     herramientas_list[index_seleccionado].seleccionada = False
 
-                    # Determinar si los controles están invertidos (solo en modo difícil cuando el enemigo está activo)
-                    controles_invertidos = es_modo_dificil and enemigo.activo and enemigo.invertir_controles
+                    # Determinar si los controles están invertidos (solo en modo profesional cuando el enemigo está activo)
+                    controles_invertidos = es_modo_profesional and enemigo.activo and enemigo.invertir_controles
                     
                     # Mapeo de teclas según si están invertidas o no
                     if controles_invertidos:
@@ -430,15 +433,15 @@ def run_level2(dificultad, idioma, screen):
                                 success_flash_timer = 0.5
                                 if etapa_actual >= len(herramientas_necesarias):
                                     objeto_reparado_timer = 4.0
-                                    mensaje_feedback = "¡OBJETO REPARADO! Esperando 4 segundos..."
+                                    mensaje_feedback = get_text("¡OBJETO REPARADO! Esperando 4 segundos...", idioma)
                                     mensaje_timer = 4.0
                                 else:
                                     siguiente_tool = herramientas_necesarias[etapa_actual]
-                                    mensaje_feedback = f"¡Herramienta '{herramienta_usada}' CORRECTA! Siguiente: {siguiente_tool}"
+                                    mensaje_feedback = f"{get_text('¡Herramienta \'', idioma)}{herramienta_usada}{get_text('\' CORRECTA! Siguiente: ', idioma)}{siguiente_tool}"
                                     mensaje_timer = 2.0
                             else:
                                 vidas -= 1
-                                mensaje_feedback = f"HERRAMIENTA INCORRECTA: Se resta 1 vida. (Vidas restantes: {vidas})"
+                                mensaje_feedback = f"{get_text('HERRAMIENTA INCORRECTA: Se resta 1 vida. (Vidas restantes: ', idioma)}{vidas})"
                                 mensaje_timer = 2.0
 
         # ================== DIBUJO ==================
@@ -460,10 +463,10 @@ def run_level2(dificultad, idioma, screen):
             objeto_display_size[1]
         )
 
-        texto_titulo = fuente.render("Nivel 2: VAMOS A REPARAR", True, BLANCO)
+        texto_titulo = fuente.render(get_text("Nivel 2: VAMOS A REPARAR", idioma), True, BLANCO)
         screen.blit(texto_titulo, (ANCHO // 2 - texto_titulo.get_width() // 2, 20))
 
-        texto_vidas = fuente.render(f"Vidas: {vidas} ", True, ROJO_VIDA)
+        texto_vidas = fuente.render(f"{get_text('Vidas', idioma)}: {vidas} ", True, ROJO_VIDA)
         screen.blit(texto_vidas, (50, 20))
 
         BARRA_TIEMPO_ANCHO = ANCHO // 3
@@ -473,11 +476,13 @@ def run_level2(dificultad, idioma, screen):
         pygame.draw.rect(screen, ROJO_ROTO, (x_barra_tiempo, y_barra_tiempo, BARRA_TIEMPO_ANCHO, BARRA_TIEMPO_ALTO), 3)
         progreso_ancho = int((tiempo_restante / tiempo_total) * BARRA_TIEMPO_ANCHO)
         pygame.draw.rect(screen, NARANJA_TIEMPO, (x_barra_tiempo, y_barra_tiempo, progreso_ancho, BARRA_TIEMPO_ALTO))
-        texto_tiempo = pygame.font.Font(None, 30).render(f"Tiempo: {int(tiempo_restante)}s", True, BLANCO)
+        texto_tiempo = pygame.font.Font(None, 30).render(f"{get_text('Tiempo', idioma)}: {int(tiempo_restante)}s", True, BLANCO)
         screen.blit(texto_tiempo, (x_barra_tiempo + BARRA_TIEMPO_ANCHO + 10, y_barra_tiempo))
 
-        objeto_actual_nombre = OBJETOS[objeto_actual_index] if objeto_actual_index < len(OBJETOS) else "¡TERMINADO!"
-        texto_objeto = fuente.render(f"OBJETO: {objeto_actual_nombre}", True, AZUL_HERRAMIENTA)
+        objeto_actual_nombre = OBJETOS[objeto_actual_index] if objeto_actual_index < len(OBJETOS) else get_text("¡TERMINADO!", idioma)
+        # Traducir el nombre del objeto si está en el diccionario de traducciones
+        objeto_nombre_traducido = get_text(objeto_actual_nombre, idioma) if objeto_actual_nombre in ["Osito de Peluche Roto", "Silla Rota", "Figura de Madera Rota"] else objeto_actual_nombre
+        texto_objeto = fuente.render(f"{get_text('OBJETO', idioma)}: {objeto_nombre_traducido}", True, AZUL_HERRAMIENTA)
         screen.blit(texto_objeto, (ANCHO // 2 - texto_objeto.get_width() // 2, area_trabajo_rect.top + 20))
 
         CAJA_PISTA_ANCHO = 250
@@ -486,7 +491,7 @@ def run_level2(dificultad, idioma, screen):
         y_pista = ALTO // 2 - CAJA_PISTA_ALTO // 2
         pygame.draw.rect(screen, GRIS_CLARO, (x_pista, y_pista, CAJA_PISTA_ANCHO, CAJA_PISTA_ALTO), 0)
         pygame.draw.rect(screen, BLANCO, (x_pista, y_pista, CAJA_PISTA_ANCHO, CAJA_PISTA_ALTO), 3)
-        texto_pista_titulo = pygame.font.Font(None, 30).render("HERRAMIENTA REQUERIDA", True, AZUL_HERRAMIENTA)
+        texto_pista_titulo = pygame.font.Font(None, 30).render(get_text("HERRAMIENTA REQUERIDA", idioma), True, AZUL_HERRAMIENTA)
         screen.blit(texto_pista_titulo, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_titulo.get_width() // 2, y_pista + 10))
 
         if not juego_finalizado and objeto_actual_index < len(OBJETOS) and objeto_reparado_timer == 0.0:
@@ -502,10 +507,10 @@ def run_level2(dificultad, idioma, screen):
                 texto_pista_contenido = fuente.render(pista_tool_nombre, True, ROJO_ROTO)
                 screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
         elif objeto_reparado_timer > 0.0:
-            texto_pista_contenido = fuente.render("REPARADO", True, VERDE_REPARACION)
+            texto_pista_contenido = fuente.render(get_text("REPARADO", idioma), True, VERDE_REPARACION)
             screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
         else:
-            texto_pista_contenido = pygame.font.Font(None, 30).render("FIN DEL JUEGO", True, ROJO_ROTO)
+            texto_pista_contenido = pygame.font.Font(None, 30).render(get_text("FIN DEL JUEGO", idioma), True, ROJO_ROTO)
             screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
 
         for herramienta in herramientas_list:
@@ -535,7 +540,7 @@ def run_level2(dificultad, idioma, screen):
         enemigo.draw(screen)
 
         if objeto_reparado_timer > 0.0:
-            estado_texto = f"OBJETO REPARADO! Siguiente objeto en {int(objeto_reparado_timer) + 1} segundos..."
+            estado_texto = f"{get_text('OBJETO REPARADO! Siguiente objeto en', idioma)} {int(objeto_reparado_timer) + 1} {get_text('segundos...', idioma)}"
             color_estado = VERDE_REPARACION
         elif mensaje_feedback:
             estado_texto = mensaje_feedback
@@ -545,7 +550,7 @@ def run_level2(dificultad, idioma, screen):
             estado_texto = mensaje_feedback
             color_estado = ROJO_ROTO if vidas <= 0 or tiempo_restante <= 0 else VERDE_REPARACION
         else:
-            estado_texto = "Presiona ENTER para usar la herramienta seleccionada"
+            estado_texto = get_text("Presiona ENTER para usar la herramienta seleccionada", idioma)
             color_estado = BLANCO
 
         texto_estado = fuente.render(estado_texto, True, color_estado)
@@ -580,7 +585,7 @@ if __name__ == '__main__':
     accion = "iniciar"
     while accion != "salir_juego":
         if accion in ("iniciar", "reiniciar"):
-            accion = run_level2(dificultad="Normal", idioma="Español", screen=screen)
+            accion = run_level2(dificultad="Intermedio", idioma="Español", screen=screen)
         elif accion == "salir_menu":
             accion = "salir_juego"
     pygame.quit()

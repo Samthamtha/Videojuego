@@ -1,5 +1,6 @@
 # settings.py
 import pygame
+from translations import get_text
 
 # Colores globales
 WHITE = (255, 255, 255)
@@ -8,7 +9,7 @@ RED = (200, 0, 0)
 
 # ==================== VARIABLES GLOBALES DE CONFIGURACIÓN ====================
 idioma = "Español"  # Valores: "Español" o "Inglés" (por implementar)
-dificultad = "Normal"  # Valores: "Fácil", "Normal", "Difícil"
+dificultad = "Intermedio"  # Valores: "Principiante", "Intermedio", "Profesional"
 volumen_musica = 0.6  # Rango: 0.0 a 1.0
 volumen_efectos = 1.0  # Rango: 0.0 a 1.0
 glitch_activado = True  # True = Glitch ON, False = Glitch OFF
@@ -262,7 +263,7 @@ def config_menu(idioma, dificultad, screen):
         screen.blit(overlay, (0, 0))
         
         # Título
-        title_text = "CONFIGURACIÓN"
+        title_text = get_text("CONFIGURACIÓN", idioma)
         title_surface = font_title.render(title_text, True, COLOR_TEXT_HIGHLIGHT)
         title_rect = title_surface.get_rect(centerx=screen_width // 2, top=title_y)
         screen.blit(title_surface, title_rect)
@@ -272,19 +273,19 @@ def config_menu(idioma, dificultad, screen):
                            selected_option == 0, font_option)
         
         # Opción 1: Volumen Música
-        draw_slider(screen, rects[1], volumen_musica, "MÚSICA", 
+        draw_slider(screen, rects[1], volumen_musica, get_text("MÚSICA", idioma), 
                    selected_option == 1, font_option)
         
         # Opción 2: Volumen Efectos
-        draw_slider(screen, rects[2], volumen_efectos, "EFECTOS", 
+        draw_slider(screen, rects[2], volumen_efectos, get_text("EFECTOS", idioma), 
                    selected_option == 2, font_option)
         
         # Opción 3: Glitch ON/OFF
-        draw_toggle(screen, rects[3], glitch_activado, "GLITCH", 
+        draw_toggle(screen, rects[3], glitch_activado, get_text("GLITCH", idioma), 
                    selected_option == 3, font_option)
         
         # Opción 4: Volver
-        draw_button(screen, rects[4], "VOLVER", selected_option == 4, font_option)
+        draw_button(screen, rects[4], get_text("VOLVER", idioma), selected_option == 4, font_option)
         
         pygame.display.flip()
         clock.tick(60)

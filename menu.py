@@ -5,6 +5,7 @@ import math
 import random  # Necesario para la aleatoriedad del glitch
 from settings import config_menu, idioma, dificultad, glitch_activado, volumen_musica, volumen_efectos
 from credits import show_credits
+from translations import get_text
 
 # Variables globales para sonidos (se inicializan en run_menu)
 sonido_seleccion = None
@@ -149,7 +150,13 @@ def run_menu(screen, dificultad, idioma):
 
     font = pygame.font.SysFont(None, 48)
     clock = pygame.time.Clock()
-    main_menu_options = ["Iniciar Juego", "Configuración", "Créditos", "Salir"]
+    # Opciones del menú traducidas
+    main_menu_options = [
+        get_text("Iniciar Juego", idioma),
+        get_text("Configuración", idioma),
+        get_text("Créditos", idioma),
+        get_text("Salir", idioma)
+    ]
     selected_option = 0
 
     BUTTON_WIDTH = 500
@@ -262,12 +269,30 @@ def run_menu(screen, dificultad, idioma):
                     if sonido_ejecucion:
                         sonido_ejecucion.play()
                     opcion = main_menu_options[selected_option]
-                    if opcion == "Iniciar Juego":
+                    # Comparar con las claves originales (no traducidas) para la lógica
+                    opcion_key = None
+                    if opcion == get_text("Iniciar Juego", idioma):
+                        opcion_key = "Iniciar Juego"
+                    elif opcion == get_text("Configuración", idioma):
+                        opcion_key = "Configuración"
+                    elif opcion == get_text("Créditos", idioma):
+                        opcion_key = "Créditos"
+                    elif opcion == get_text("Salir", idioma):
+                        opcion_key = "Salir"
+                    
+                    if opcion_key == "Iniciar Juego":
                         return "jugar", dificultad, idioma
-                    elif opcion == "Configuración":
+                    elif opcion_key == "Configuración":
                         resultado = config_menu(idioma, dificultad, screen)
                         if resultado:
                             idioma, dificultad = resultado
+                            # Actualizar opciones del menú con el nuevo idioma
+                            main_menu_options = [
+                                get_text("Iniciar Juego", idioma),
+                                get_text("Configuración", idioma),
+                                get_text("Créditos", idioma),
+                                get_text("Salir", idioma)
+                            ]
                         # Actualizar volúmenes después de salir de configuración
                         from settings import volumen_musica, volumen_efectos
                         pygame.mixer.music.set_volume(volumen_musica)
@@ -275,9 +300,9 @@ def run_menu(screen, dificultad, idioma):
                             sonido_seleccion.set_volume(volumen_efectos)
                         if sonido_ejecucion:
                             sonido_ejecucion.set_volume(volumen_efectos)
-                    elif opcion == "Créditos":
+                    elif opcion_key == "Créditos":
                         show_credits(screen)
-                    elif opcion == "Salir":
+                    elif opcion_key == "Salir":
                         return "salir", dificultad, idioma
 
         # Lógica de Dibujo

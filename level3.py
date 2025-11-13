@@ -245,7 +245,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     pygame.event.clear()
-                    accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
+                    accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH, idioma)
                     if accion == "salir_juego":
                         return "salir_juego"
                     elif accion == "reiniciar":

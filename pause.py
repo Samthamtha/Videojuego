@@ -1,6 +1,7 @@
 # pause.py - CORREGIDO
 import pygame
 import sys
+from translations import get_text
 
 # Definición de Colores
 BLANCO = (255, 255, 255)
@@ -9,19 +10,22 @@ ROJO = (255, 0, 0)
 # Constantes del Menú
 TEXT_COLOR = BLANCO
 SELECT_COLOR = ROJO
-# Nueva lista de opciones
-OPCIONES = ["Reanudar", "Volumen", "Reiniciar", "Salir"]
+# Nueva lista de opciones (se traducirá dentro de la función)
+OPCIONES_KEYS = ["Reanudar", "Volumen", "Reiniciar", "Salir"]
 
-def mostrar_menu_pausa(screen, alto, ancho):
+def mostrar_menu_pausa(screen, alto, ancho, idioma="Español"):
     """
     Muestra el menú de pausa sobre la pantalla actual.
     Parámetros:
         screen: superficie de pygame donde se dibuja.
         alto: alto de la ventana (int).
         ancho: ancho de la ventana (int).
+        idioma: idioma actual del juego ("Español" o "Inglés").
     Devuelve:
         "reanudar", "reiniciar", "salir"
     """
+    # Traducir opciones según el idioma
+    OPCIONES = [get_text(key, idioma) for key in OPCIONES_KEYS]
     # 1. OBTENER VOLUMEN INICIAL (0-100)
     try:
         if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
@@ -43,7 +47,7 @@ def mostrar_menu_pausa(screen, alto, ancho):
     fondo_nivel = screen.copy()
 
     # Título
-    titulo_texto = menu_font.render("MENÚ DE PAUSA", True, BLANCO)
+    titulo_texto = menu_font.render(get_text("MENÚ DE PAUSA", idioma), True, BLANCO)
 
     menu_x_centro = ancho // 2
     menu_y_inicio = alto // 3

@@ -5,6 +5,7 @@ import math
 from pause import mostrar_menu_pausa
 from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
 import tutorial_nivel1
+from translations import get_text
 
 pygame.init()
 WIDTH, HEIGHT = 1540, 800
@@ -191,15 +192,15 @@ def run_level1(dificultad, idioma, screen):
     global WIDTH, HEIGHT, clock, FPS
     # --- Config dificultad ---
     # Ajuste de spawn rate para que aparezcan pocos peligros
-    if dificultad.lower() in ["fácil", "facil"]:
+    if dificultad.lower() in ["principiante"]:
         trash_speed = 2
         spawn_rate = 150
         danger_spawn_rate = 450
-    elif dificultad.lower() in ["difícil", "dificil"]:
+    elif dificultad.lower() in ["profesional"]:
         trash_speed = 4
         spawn_rate = 100
         danger_spawn_rate = 300
-    else:  # Normal: 360 ticks (6 segundos) por peligro
+    else:  # Intermedio: 360 ticks (6 segundos) por peligro
         trash_speed = 3
         spawn_rate = 120
         danger_spawn_rate = 360
@@ -262,7 +263,7 @@ def run_level1(dificultad, idioma, screen):
                 return "salir_juego"
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 pygame.event.clear()
-                accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
+                accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH, idioma)
                 if accion == "reanudar":
                     skip = True
                     break
@@ -353,13 +354,13 @@ def run_level1(dificultad, idioma, screen):
         pygame.draw.rect(screen,BLACK,panel_rect,3,border_radius=8)
         
         # Título
-        titulo_surf = font.render("OBJETIVOS DE RECOLECCIÓN", True, BLACK)
+        titulo_surf = font.render(get_text("OBJETIVOS DE RECOLECCIÓN", idioma), True, BLACK)
         # Centramos el título dentro del nuevo ancho
         titulo_x = panel_rect.x + (PANEL_WIDTH - titulo_surf.get_width()) // 2
         screen.blit(titulo_surf, (titulo_x, panel_rect.y + 10))
 
         # Subtítulo (Mi Puntuación)
-        subtitulo_surf = font_small.render("MI PUNTUACIÓN DE RECICLAJE", True, (50, 50, 50))
+        subtitulo_surf = font_small.render(get_text("MI PUNTUACIÓN DE RECICLAJE", idioma), True, (50, 50, 50))
         subtitulo_x = panel_rect.x + (PANEL_WIDTH - subtitulo_surf.get_width()) // 2
         screen.blit(subtitulo_surf, (subtitulo_x, panel_rect.y + 45))
 
@@ -368,7 +369,8 @@ def run_level1(dificultad, idioma, screen):
             color={'organica':DARK_GREEN,'reciclable':DARK_BLUE,'inorganico':DARK_RED}[tipo]
             
             # Etiqueta de la basura (RECICLABLE, ORGÁNICA, INORGÁNICA)
-            label = tipo.upper().replace('RECICLABLE', 'RECICLABLE').replace('ORGANICA', 'ORGÁNICA').replace('INORGANICO', 'INORGÁNICA')
+            label_map = {'reciclable': get_text("RECICLABLE", idioma), 'organica': get_text("ORGÁNICA", idioma), 'inorganico': get_text("INORGÁNICA", idioma)}
+            label = label_map.get(tipo, tipo.upper())
             label_surf = font_small.render(f"[{label}]", True, color)
             screen.blit(label_surf, (panel_rect.x + 10, panel_rect.y + y_off))
 
@@ -392,7 +394,7 @@ def run_level1(dificultad, idioma, screen):
         # --- Indicador de Peligros ---
         if danger_penalty_display > 0:
             # Creamos un pequeño banner para la alerta
-            text_alert = "¡PELIGRO! Tronco: -2 PUNTOS"
+            text_alert = get_text("¡PELIGRO! Tronco: -2 PUNTOS", idioma)
             alert_surf = font_danger.render(text_alert, True, BLACK)
             
             alert_w = alert_surf.get_width() + 20
@@ -411,14 +413,14 @@ def run_level1(dificultad, idioma, screen):
 
         # --- Puntos y tiempo (HUD Superior Derecho) ---
         # Puntos
-        puntos_surf=font.render(f"PUNTOS: {PUNTOS}",True,BLACK)
+        puntos_surf=font.render(f"{get_text('PUNTOS', idioma)}: {PUNTOS}",True,BLACK)
         puntos_rect=puntos_surf.get_rect(topright=(WIDTH-20,20))
         pygame.draw.rect(screen, LIGHT_GRAY, (puntos_rect.x - 10, puntos_rect.y - 5, puntos_rect.width + 20, puntos_rect.height + 10), border_radius=6)
         pygame.draw.rect(screen, BLACK, (puntos_rect.x - 10, puntos_rect.y - 5, puntos_rect.width + 20, puntos_rect.height + 10), 2, border_radius=6)
         screen.blit(puntos_surf, puntos_rect)
         
         # Tiempo
-        tiempo_surf=font.render(f"Tiempo: {int(tiempo_restante)}s",True,BLACK)
+        tiempo_surf=font.render(f"{get_text('Tiempo', idioma)}: {int(tiempo_restante)}s",True,BLACK)
         screen.blit(tiempo_surf,(WIDTH-200,60))
         
         # Barra de tiempo
@@ -449,6 +451,6 @@ def run_level1(dificultad, idioma, screen):
     return "siguiente"
 
 if __name__=="__main__":
-    accion=run_level1("Normal","Español",screen)
+    accion=run_level1("Intermedio","Español",screen)
     print(f"Resultado: {accion}")
     pygame.quit(); sys.exit()
