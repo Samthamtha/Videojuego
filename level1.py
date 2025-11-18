@@ -93,12 +93,36 @@ DANGER_MAP = {
 }
 DANGER_TYPES = list(DANGER_MAP.keys())
 
+# --- Personaje: Gato que lanza peligros ---
+try:
+    cat_thrower_img = pygame.image.load("img/gato_malo.png").convert_alpha()
+    cat_thrower_img = pygame.transform.scale(cat_thrower_img, (200, 160))
+except pygame.error:
+    print("Advertencia: No se encontró img/gato_malo.png. Usando fallback.")
+    cat_thrower_img = pygame.Surface((200, 160), pygame.SRCALPHA)
+    cat_thrower_img.fill((120, 120, 120))
+    pygame.draw.rect(cat_thrower_img, BLACK, cat_thrower_img.get_rect(), 3)
+
 
 # Waypoints del río
 RIVER_CENTER_WAYPOINTS = [
     (770, 200), (760, 280), (780, 360), (770, 440),
     (780, 520), (770, 600), (770, 680), (770, 750),
 ]
+
+# Trayectoria del gato (recorre la orilla izquierda del río)
+CAT_WAYPOINTS = [
+    (600, 150), (540, 230), (570, 320),
+    (520, 420), (590, 500), (650, 380),
+    (630, 260)
+]
+
+def get_path_length(waypoints):
+    if len(waypoints) < 2:
+        return 1
+    return sum(math.sqrt((waypoints[i+1][0] - waypoints[i][0])**2 +
+                         (waypoints[i+1][1] - waypoints[i][1])**2)
+               for i in range(len(waypoints) - 1))
 
 def get_position_on_path(progress, waypoints, offset_x=0):
     if progress >= 1.0:
@@ -200,26 +224,77 @@ class PlayerBar:
     def draw(self, surf):
         self.botes.draw(surf)
 
+class CatThrower(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image_idle = cat_thrower_img
+        self.image_throw = pygame.transform.rotate(cat_thrower_img, -8)
+        self.image = self.image_idle
+        self.throw_timer = 0
+        first_wp = CAT_WAYPOINTS[0] if CAT_WAYPOINTS else (0, 0)
+        self.rect = self.image.get_rect(midbottom=(first_wp[0], first_wp[1]))
+        self.path_progress = 0.0
+        self.path_direction = 1
+        self.walk_speed = 140  # pixeles por segundo
+        self.path_length = get_path_length(CAT_WAYPOINTS)
+
+    def trigger_throw(self):
+        self.throw_timer = 20
+
+    def update(self, dt):
+        prev_midbottom = self.rect.midbottom
+        if self.throw_timer > 0:
+            self.throw_timer -= 1
+            next_image = self.image_throw
+        else:
+            next_image = self.image_idle
+
+        if self.image != next_image:
+            self.image = next_image
+            self.rect = self.image.get_rect(midbottom=prev_midbottom)
+
+        self._update_walk(dt)
+
+    def _update_walk(self, dt):
+        if not CAT_WAYPOINTS or self.path_length <= 0:
+            return
+        progress_delta = (self.walk_speed * dt) / self.path_length
+        self.path_progress += progress_delta * self.path_direction
+
+        if self.path_progress >= 1.0:
+            self.path_progress = 1.0
+            self.path_direction = -1
+        elif self.path_progress <= 0.0:
+            self.path_progress = 0.0
+            self.path_direction = 1
+
+        new_pos = get_position_on_path(self.path_progress, CAT_WAYPOINTS)
+        self.rect.midbottom = (new_pos[0], new_pos[1])
+
 def run_level1(dificultad, idioma, screen):
     global WIDTH, HEIGHT, clock, FPS
     # --- Config dificultad ---
     # Ajuste de spawn rate para que aparezcan pocos peligros
-    if dificultad.lower() in ["principiante"]:
-        trash_speed = 2
+    dificultad_lower = dificultad.lower()
+    if dificultad_lower in ["principiante"]:
+        trash_speed = 1.4
         spawn_rate = 150
         danger_spawn_rate = 450
-    elif dificultad.lower() in ["profesional"]:
-        trash_speed = 4
+        danger_pool = ['tronco']
+    elif dificultad_lower in ["profesional"]:
+        trash_speed = 3
         spawn_rate = 100
         danger_spawn_rate = 300
+        danger_pool = ['tronco', 'tronco', 'tronco', 'tronco', 'bomba']
     else:  # Intermedio: 360 ticks (6 segundos) por peligro
-        trash_speed = 3
+        trash_speed = 2.2
         spawn_rate = 120
         danger_spawn_rate = 360
+        danger_pool = ['tronco']
 
     # Se mantiene la misma meta y puntuación
-    PUNTOS = 20
-    TIEMPO_TOTAL = 60
+    PUNTOS = 25
+    TIEMPO_TOTAL = 70
     tiempo_restante = TIEMPO_TOTAL
     METAS = {'reciclable': 4, 'organica': 2, 'inorganico': 2}
     CONTADOR = {'reciclable': 0, 'organica': 0, 'inorganico': 0}
@@ -244,6 +319,7 @@ def run_level1(dificultad, idioma, screen):
     trashes = pygame.sprite.Group()
     player = PlayerBar(WIDTH // 2 - 360)
     all_sprites.add(player.botes)
+    cat_thrower = CatThrower()
     spawn_timer = 0
     danger_timer = 0
     font = pygame.font.SysFont(None, 36)
@@ -286,6 +362,8 @@ def run_level1(dificultad, idioma, screen):
         if skip:
             continue
 
+        cat_thrower.update(dt)
+
         keys = pygame.key.get_pressed()
         dx = 0
         if not juego_finalizado:
@@ -298,22 +376,25 @@ def run_level1(dificultad, idioma, screen):
             
             # --- Aparición de Basura de Clasificación ---
             spawn_timer += 1
+            spawned_this_cycle = False
             if spawn_timer >= spawn_rate:
                 tipo = random.choice(TRASH_TYPES)
                 t = Trash(tipo, trash_speed)
                 all_sprites.add(t)
                 trashes.add(t)
                 spawn_timer = 0
+                spawned_this_cycle = True
                 
             # --- Aparición de Peligros (Tronco/Bomba) ---
             danger_timer += 1
-            if danger_timer >= danger_spawn_rate:
-                # 80% Tronco, 20% Bomba (Ajusta la probabilidad para que la bomba sea rara)
-                danger_type = random.choice(['tronco', 'tronco', 'tronco', 'tronco', 'bomba'])
+            if danger_timer >= danger_spawn_rate and not spawned_this_cycle:
+                # Selección condicionada por dificultad (bombas sólo a partir de profesional)
+                danger_type = random.choice(danger_pool)
                 d = Peligro(danger_type, trash_speed)
                 all_sprites.add(d)
                 trashes.add(d)
                 danger_timer = 0
+                cat_thrower.trigger_throw()
 
             trashes.update()
             
@@ -324,9 +405,9 @@ def run_level1(dificultad, idioma, screen):
                         
                         if trash.es_peligro:
                             if trash.tipo == 'tronco':
-                                PUNTOS -= 2  # Penalización por Tronco: -2 Puntos
+                                PUNTOS -= 1  # Penalización por Tronco: -1 Puntos
                                 danger_penalty_display = 60  # Muestra el mensaje por 1 segundo (60 frames)
-                                print("¡Peligro! Colisión con Tronco. -2 Puntos.")
+                                print("¡Peligro! Colisión con Tronco. -1 Puntos.")
                             elif trash.tipo == 'bomba':
                                 PUNTOS = 0  # Penalización por Bomba: Derrota Inmediata
                                 juego_finalizado = True
@@ -354,6 +435,7 @@ def run_level1(dificultad, idioma, screen):
 
         # --- DIBUJO ---
         screen.blit(fondo,(0,0))
+        screen.blit(cat_thrower.image, cat_thrower.rect)
         trashes.draw(screen)
         player.draw(screen) 
         

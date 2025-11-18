@@ -95,12 +95,13 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
 
     # teclas de dirección (fallback)
     teclado_imgs = []
+    KEY_IMG_SIZE = (100, 100)
     for path in ("img/teclado_izquierda.png","img/teclado1.png","img/teclado_derecha.png"):
         try:
             t = pygame.image.load(path).convert_alpha()
-            t = pygame.transform.scale(t, (60,60))
+            t = pygame.transform.scale(t, KEY_IMG_SIZE)
         except Exception:
-            t = pygame.Surface((60,60), pygame.SRCALPHA)
+            t = pygame.Surface(KEY_IMG_SIZE, pygame.SRCALPHA)
             pygame.draw.rect(t,(200,200,200), t.get_rect())
         teclado_imgs.append(t)
 
@@ -144,6 +145,7 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
 
     # Pre-create text rect
     text_panel_rect = pygame.Rect(50, HEIGHT - 180, WIDTH - 220, 130)
+    skip_button_rect = pygame.Rect(WIDTH - 180, 25, 140, 50)
 
     # Initialize first dialog lines
     if dialogos:
@@ -170,6 +172,9 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
                             running = False
                         else:
                             prepare_dialog(dialogos[dialog_index])
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if skip_button_rect.collidepoint(event.pos):
+                    return True
 
         # Draw background + overlay
         try:
@@ -183,9 +188,20 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
         pibble_rect = pibble_imgs[img_idx].get_rect(bottomright=(WIDTH-30, HEIGHT-30))
         screen.blit(pibble_imgs[img_idx], pibble_rect)
 
+        mouse_pos = pygame.mouse.get_pos()
+
         # Dialogue box
         pygame.draw.rect(screen, (255,255,255), text_panel_rect, border_radius=8)
         pygame.draw.rect(screen, (0,0,0), text_panel_rect, 3, border_radius=8)
+
+        # Skip button
+        button_color = (255, 215, 0) if skip_button_rect.collidepoint(mouse_pos) else (240, 240, 240)
+        pygame.draw.rect(screen, button_color, skip_button_rect, border_radius=10)
+        pygame.draw.rect(screen, (0,0,0), skip_button_rect, 3, border_radius=10)
+        skip_font = pygame.font.SysFont(None, 32)
+        skip_text = skip_font.render("SALTAR", True, (0,0,0))
+        text_pos = skip_text.get_rect(center=skip_button_rect.center)
+        screen.blit(skip_text, text_pos)
 
         # If dialog valid, spawn falling objects and show keys
         if dialog_index < len(dialogos):
@@ -200,8 +216,11 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
                 falling_group.add(FallingObject(basura_tipo, (50, WIDTH-100), speed=200))
 
             if dlg["show_keys"]:
+                base_x = 150
+                spacing = 120
+                y_pos = HEIGHT - 310
                 for i, key_img in enumerate(teclado_imgs):
-                    screen.blit(key_img, (100 + i*80, HEIGHT - 250))
+                    screen.blit(key_img, (base_x + i*spacing, y_pos))
 
         # letra por letra: incrementar a ritmo constante (no por frame)
         if dialog_index < len(dialogos) and letra_index < total_chars:
