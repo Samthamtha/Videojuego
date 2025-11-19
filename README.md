@@ -92,4 +92,4 @@ La encuesta se centrará en responder las siguientes preguntas:
 
 ## 📄 Licencia
 
-Este proyecto se distribuye bajo la **Licencia MIT**.
+© 2025 **Byte Bin Games**, Todos los Derechos Reservados.
