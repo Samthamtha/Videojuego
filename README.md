@@ -25,7 +25,7 @@ El objetivo es concienciar sobre la gestión de residuos y el consumo responsabl
 
 El juego se compone de tres minijuegos principales, cada uno enfocado en una "R" diferente.
 
-### Etapa 1: ¡El Río Contaminado! (Reducir / Reciclar)
+### Etapa 1: ¡El Río Contaminado! (Reducir / Reciclar / )
 
 En este nivel, el jugador debe limpiar un río clasificando la basura que cae.
 
@@ -62,7 +62,7 @@ El nivel final enseña cómo los objetos "viejos" pueden tener una nueva vida y 
 
 ## 🧪 Pruebas y Validación del Proyecto
 
-Se seguro que el juego cumple sus objetivos educativos y es genuinamente divertido, se siguio un proceso de validación en dos fases:
+Se aseguro que el juego cumple sus objetivos educativos y es genuinamente divertido, se siguio un proceso de validación en dos fases:
 
 1.  **Prueba de Campo:** Se realizará una sesión de juego supervisada en la escuela primaria "EMILIANO ZAPATA" con niños y niñas de un rango de edad (6-11 años).
 2.  **Encuesta General:** Inmediatamente después de la prueba de campo, se aplicará una encuesta a los participantes para recolectar retroalimentación cualitativa y cuantitativa.
