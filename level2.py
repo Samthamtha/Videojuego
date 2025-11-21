@@ -30,31 +30,53 @@ pygame.init()
 
 # ================== CONSTANTES Y COLORES ==================
 BLANCO = (255, 255, 255)
-GRIS_CLARO = (200, 200, 200)
-VERDE_REPARACION = (100, 180, 100)
-ROJO_ROTO = (180, 50, 50)
-AZUL_HERRAMIENTA = (50, 50, 180)
-AMARILLO_SELECCION = (255, 255, 0)
+GRIS_CLARO = (220, 220, 220)
+VERDE_REPARACION = (80, 200, 120)
+ROJO_ROTO = (220, 60, 60)
+AZUL_HERRAMIENTA = (50, 80, 200)
+AMARILLO_SELECCION = (255, 230, 0)
 AZUL_FONDO = (30, 144, 255)
-NARANJA_TIEMPO = (255, 140, 0)
-ROJO_VIDA = (255, 0, 0)
+NARANJA_TIEMPO = (255, 160, 0)
+ROJO_VIDA = (255, 50, 80)
 VERDE_TRANSPARENTE = (0, 200, 0, 100)
-COLOR_FONDO_HERRAMIENTA = (70, 70, 70)
-COLOR_BORDE_HERRAMIENTA = (150, 150, 150)
+
+# Color llamativo para el texto del tiempo
+AMARILLO_TIEMPO_TEXTO = (255, 255, 0)
+
+# Colores más vivos para las tarjetas
+COLOR_FONDO_HERRAMIENTA = (40, 40, 80)
+COLOR_BORDE_HERRAMIENTA = (255, 255, 255)
 
 ANCHO = 1540
 ALTO = 785
 screen = pygame.display.set_mode((ANCHO, ALTO))
-pygame.display.set_caption("Nivel 2: Reparación con Teclado")
+pygame.display.set_caption("Nivel 2 - Taller de Reparaciones")
 fuente = pygame.font.Font(None, 48)
 clock = pygame.time.Clock()
 FPS = 60
 
 # ================== MEDIDAS DE ICONOS ==================
-TOOL_DISPLAY_WIDTH = 120
-TOOL_DISPLAY_HEIGHT = 120
+TOOL_DISPLAY_WIDTH = 130
+TOOL_DISPLAY_HEIGHT = 130
 TOOL_IMG_WIDTH = 90
 TOOL_IMG_HEIGHT = 90
+
+# ================== HELPERS DE DIBUJO ==================
+def draw_rounded_rect(surface, color, rect, radius=20, width=0):
+    pygame.draw.rect(surface, color, rect, width=width, border_radius=radius)
+
+def render_text_shrink(text, max_width, color, base_size=28, min_size=14):
+    """Renderiza texto ajustando tamaño para que no se salga del ancho máximo."""
+    size = base_size
+    last_surf = None
+    while size >= min_size:
+        font = pygame.font.Font(None, size)
+        surf = font.render(text, True, color)
+        if surf.get_width() <= max_width:
+            return surf, font
+        last_surf = surf
+        size -= 2
+    return last_surf, pygame.font.Font(None, min_size)
 
 # ================== CARGA DE HERRAMIENTAS ==================
 HERRAMIENTAS_IMGS = {}
@@ -96,19 +118,25 @@ class Herramienta(pygame.sprite.Sprite):
         self.nombre = nombre
         self.seleccionada = False
         self.image = pygame.Surface([ancho, alto], pygame.SRCALPHA)
-        self.image.fill(COLOR_FONDO_HERRAMIENTA)
-        pygame.draw.rect(self.image, COLOR_BORDE_HERRAMIENTA, self.image.get_rect(), 3)
+
+        # Fondo de tarjeta redondeado
+        rect = self.image.get_rect()
+        draw_rounded_rect(self.image, COLOR_FONDO_HERRAMIENTA, rect, radius=22)
+        draw_rounded_rect(self.image, COLOR_BORDE_HERRAMIENTA, rect, radius=22, width=3)
+
+        # Icono de herramienta
         tool_img = HERRAMIENTAS_IMGS.get(nombre)
         if tool_img:
             img_x = (ancho - tool_img.get_width()) // 2
-            img_y = (alto - tool_img.get_height()) // 2
+            img_y = (alto - tool_img.get_height()) // 2 - 8
             self.image.blit(tool_img, (img_x, img_y))
         else:
             temp_surface = pygame.Surface([TOOL_IMG_WIDTH, TOOL_IMG_HEIGHT], pygame.SRCALPHA)
             temp_surface.fill(AZUL_HERRAMIENTA)
             img_x = (ancho - TOOL_IMG_WIDTH) // 2
-            img_y = (alto - TOOL_IMG_HEIGHT) // 2
+            img_y = (alto - TOOL_IMG_HEIGHT) // 2 - 8
             self.image.blit(temp_surface, (img_x, img_y))
+
         self.rect = self.image.get_rect(topleft=(x, y))
 
 # ================== FONDO ==================
@@ -149,13 +177,13 @@ class EnemigoDistractor:
             "¡NO PODRÁS!",
             "¡MUAHAHA!",
             "¡TE DISTRAIGO!",
-            "¡MIRE AQUÍ!",
+            "¡MIRA AQUÍ!",
             "¡JA JA JA!"
         ]
         self.mensajes_profesional = [
             "¡CONTROLES INVERTIDOS!",
             "¡JAJAJA!",
-            "¡AHORA ES PROFESIONAL!",
+            "¡AHORA ES PRO!",
             "¡MUAHAHA!",
             "¡TE CONFUNDO!",
             "¡JA JA JA!"
@@ -192,7 +220,6 @@ class EnemigoDistractor:
             
             # Animación de entrada (primeros 0.5 segundos)
             if self.tiempo_aparicion < 0.5:
-                # Efecto de zoom y fade in
                 progress = self.tiempo_aparicion / 0.5
                 self.scale = 0.5 + (1.0 - 0.5) * progress
                 self.alpha = int(255 * progress)
@@ -221,28 +248,27 @@ class EnemigoDistractor:
     def draw(self, screen):
         """Dibuja el enemigo en la pantalla."""
         if self.activo and self.alpha > 0:
-            # Dibujar imagen del enemigo
             screen.blit(self.imagen, self.rect)
             
-            # Dibujar mensaje distractivo
-            if self.alpha > 100:  # Solo mostrar mensaje cuando está bien visible
-                mensaje_surf = self.font_mensaje.render(self.mensaje_actual, True, (255, 0, 0))
+            if self.alpha > 100:
+                mensaje_surf = self.font_mensaje.render(self.mensaje_actual, True, (255, 255, 0))
                 mensaje_surf.set_alpha(self.alpha)
                 mensaje_rect = mensaje_surf.get_rect(center=(self.x, self.y - 150))
                 
-                # Fondo del mensaje para mejor legibilidad
                 fondo_mensaje = pygame.Surface((mensaje_rect.width + 20, mensaje_rect.height + 10), pygame.SRCALPHA)
                 fondo_mensaje.fill((0, 0, 0, min(200, self.alpha)))
                 screen.blit(fondo_mensaje, (mensaje_rect.x - 10, mensaje_rect.y - 5))
                 screen.blit(mensaje_surf, mensaje_rect)
             
-            # Efecto de brillo/glow alrededor
             if self.alpha > 150:
                 glow_surface = pygame.Surface((self.rect.width + 40, self.rect.height + 40), pygame.SRCALPHA)
                 glow_alpha = int((self.alpha - 150) * 0.3)
-                pygame.draw.circle(glow_surface, (255, 0, 0, glow_alpha), 
-                                 (glow_surface.get_width() // 2, glow_surface.get_height() // 2),
-                                 min(glow_surface.get_width(), glow_surface.get_height()) // 2)
+                pygame.draw.circle(
+                    glow_surface,
+                    (255, 0, 0, glow_alpha),
+                    (glow_surface.get_width() // 2, glow_surface.get_height() // 2),
+                    min(glow_surface.get_width(), glow_surface.get_height()) // 2
+                )
                 screen.blit(glow_surface, (self.rect.x - 20, self.rect.y - 20))
 
 # ================== NIVEL 2 ==================
@@ -270,21 +296,19 @@ def run_level2(dificultad, idioma, screen):
     success_flash_timer = 0.0
     juego_finalizado = False
     
-    # ================== SISTEMA DE ENEMIGO DISTRACTOR ==================
     enemigo = EnemigoDistractor(ANCHO, ALTO)
     enemigo_timer = 0.0
     es_modo_profesional = dificultad.lower() in ["profesional"]
-    # Tiempo entre apariciones (ajustable según dificultad)
+
     if dificultad.lower() in ["principiante"]:
-        enemigo_intervalo_min = 8.0  # Aparece cada 8-12 segundos
+        enemigo_intervalo_min = 8.0
         enemigo_intervalo_max = 12.0
     elif es_modo_profesional:
-        enemigo_intervalo_min = 4.0  # Aparece cada 4-6 segundos (más frecuente)
+        enemigo_intervalo_min = 4.0
         enemigo_intervalo_max = 6.0
-        # En modo profesional, el enemigo invierte los controles
         enemigo.invertir_controles = True
-    else:  # Intermedio - Apariciones más frecuentes
-        enemigo_intervalo_min = 3.5  # Aparece cada 3.5-5.5 segundos (más frecuente)
+    else:
+        enemigo_intervalo_min = 3.5
         enemigo_intervalo_max = 5.5
     
     proxima_aparicion = random.uniform(enemigo_intervalo_min, enemigo_intervalo_max)
@@ -318,16 +342,13 @@ def run_level2(dificultad, idioma, screen):
         delta_time = clock.tick(FPS) / 1000.0
 
         if not juego_finalizado:
-            # Actualizar enemigo distractor
             enemigo.update(delta_time)
             
-            # Lógica de aparición del enemigo
             if not enemigo.activo:
                 enemigo_timer += delta_time
                 if enemigo_timer >= proxima_aparicion:
                     enemigo.activar()
                     enemigo_timer = 0.0
-                    # Calcular próxima aparición
                     proxima_aparicion = random.uniform(enemigo_intervalo_min, enemigo_intervalo_max)
             
             if success_flash_timer > 0:
@@ -382,18 +403,14 @@ def run_level2(dificultad, idioma, screen):
                 elif evento.type == pygame.KEYDOWN and not juego_finalizado and objeto_reparado_timer == 0.0:
                     herramientas_list[index_seleccionado].seleccionada = False
 
-                    # Determinar si los controles están invertidos (solo en modo profesional cuando el enemigo está activo)
                     controles_invertidos = es_modo_profesional and enemigo.activo and enemigo.invertir_controles
                     
-                    # Mapeo de teclas según si están invertidas o no
                     if controles_invertidos:
-                        # Controles invertidos: UP actúa como DOWN, LEFT actúa como RIGHT, etc.
                         tecla_arriba = (pygame.K_s, pygame.K_DOWN)
                         tecla_abajo = (pygame.K_w, pygame.K_UP)
                         tecla_derecha = (pygame.K_a, pygame.K_LEFT)
                         tecla_izquierda = (pygame.K_d, pygame.K_RIGHT)
                     else:
-                        # Controles normales
                         tecla_arriba = (pygame.K_w, pygame.K_UP)
                         tecla_abajo = (pygame.K_s, pygame.K_DOWN)
                         tecla_derecha = (pygame.K_d, pygame.K_RIGHT)
@@ -409,7 +426,6 @@ def run_level2(dificultad, idioma, screen):
                             index_seleccionado = index_seleccionado - 2
                         else:
                             index_seleccionado = (index_seleccionado - 1) % len(herramientas_list)
-
                     elif evento.key in tecla_derecha:
                         if index_seleccionado % 2 == 0:
                             index_seleccionado = (index_seleccionado + 1) % len(herramientas_list)
@@ -437,7 +453,7 @@ def run_level2(dificultad, idioma, screen):
                                     mensaje_timer = 4.0
                                 else:
                                     siguiente_tool = herramientas_necesarias[etapa_actual]
-                                    mensaje_feedback = f"{get_text('¡Herramienta \'', idioma)}{herramienta_usada}{get_text('\' CORRECTA! Siguiente: ', idioma)}{siguiente_tool}"
+                                    mensaje_feedback = get_text("¡Herramienta '", idioma) + herramienta_usada + get_text("' CORRECTA! Siguiente: ", idioma) + siguiente_tool
                                     mensaje_timer = 2.0
                             else:
                                 vidas -= 1
@@ -451,8 +467,9 @@ def run_level2(dificultad, idioma, screen):
             screen.fill(AZUL_FONDO)
 
         area_trabajo_surface = pygame.Surface((ANCHO // 2, int(ALTO * 0.75)), pygame.SRCALPHA)
-        area_trabajo_surface.fill((*GRIS_CLARO, 180))
+        area_trabajo_surface.fill((255, 255, 255, 200))
         area_trabajo_rect = area_trabajo_surface.get_rect(topleft=(ANCHO // 4, ALTO // 8))
+        draw_rounded_rect(area_trabajo_surface, (255, 255, 255, 255), area_trabajo_surface.get_rect(), radius=30, width=4)
         screen.blit(area_trabajo_surface, area_trabajo_rect.topleft)
 
         objeto_display_size = (300, 300)
@@ -463,36 +480,66 @@ def run_level2(dificultad, idioma, screen):
             objeto_display_size[1]
         )
 
-        texto_titulo = fuente.render(get_text("Nivel 2: VAMOS A REPARAR", idioma), True, BLANCO)
-        screen.blit(texto_titulo, (ANCHO // 2 - texto_titulo.get_width() // 2, 20))
+        # PANEL VIDAS (sin icono)
+        vidas_texto = f"{get_text('Vidas', idioma)}: {vidas}"
+        vidas_surf, _ = render_text_shrink(vidas_texto, max_width=220, color=BLANCO, base_size=36)
+        vidas_rect = vidas_surf.get_rect()
+        vidas_box = pygame.Rect(40, 20, vidas_rect.width + 30, vidas_rect.height + 16)
+        draw_rounded_rect(screen, ROJO_VIDA, vidas_box, radius=18)
+        draw_rounded_rect(screen, BLANCO, vidas_box, radius=18, width=2)
+        vidas_rect.center = vidas_box.center
+        screen.blit(vidas_surf, vidas_rect)
 
-        texto_vidas = fuente.render(f"{get_text('Vidas', idioma)}: {vidas} ", True, ROJO_VIDA)
-        screen.blit(texto_vidas, (50, 20))
-
+        # BARRA DE TIEMPO + BURBUJA ARRIBA
         BARRA_TIEMPO_ANCHO = ANCHO // 3
-        BARRA_TIEMPO_ALTO = 20
+        BARRA_TIEMPO_ALTO = 24
         x_barra_tiempo = ANCHO // 2 - BARRA_TIEMPO_ANCHO // 2
-        y_barra_tiempo = 70
-        pygame.draw.rect(screen, ROJO_ROTO, (x_barra_tiempo, y_barra_tiempo, BARRA_TIEMPO_ANCHO, BARRA_TIEMPO_ALTO), 3)
+        y_barra_tiempo = 60
+
+        pygame.draw.rect(screen, BLANCO, (x_barra_tiempo - 4, y_barra_tiempo - 4,
+                                          BARRA_TIEMPO_ANCHO + 8, BARRA_TIEMPO_ALTO + 8), border_radius=15)
+        pygame.draw.rect(screen, (200, 200, 200),
+                         (x_barra_tiempo, y_barra_tiempo, BARRA_TIEMPO_ANCHO, BARRA_TIEMPO_ALTO),
+                         border_radius=12)
         progreso_ancho = int((tiempo_restante / tiempo_total) * BARRA_TIEMPO_ANCHO)
-        pygame.draw.rect(screen, NARANJA_TIEMPO, (x_barra_tiempo, y_barra_tiempo, progreso_ancho, BARRA_TIEMPO_ALTO))
-        texto_tiempo = pygame.font.Font(None, 30).render(f"{get_text('Tiempo', idioma)}: {int(tiempo_restante)}s", True, BLANCO)
-        screen.blit(texto_tiempo, (x_barra_tiempo + BARRA_TIEMPO_ANCHO + 10, y_barra_tiempo))
+        pygame.draw.rect(screen, NARANJA_TIEMPO,
+                         (x_barra_tiempo, y_barra_tiempo, progreso_ancho, BARRA_TIEMPO_ALTO),
+                         border_radius=12)
+
+        texto_tiempo = pygame.font.Font(None, 34).render(
+            f"{get_text('Tiempo', idioma)}: {int(tiempo_restante)}s", True, AMARILLO_TIEMPO_TEXTO
+        )
+        bubble_rect = pygame.Rect(0, 0, texto_tiempo.get_width() + 30, texto_tiempo.get_height() + 16)
+        bubble_rect.center = (ANCHO // 2, 25)
+        draw_rounded_rect(screen, (148, 0, 211), bubble_rect, radius=20)
+        draw_rounded_rect(screen, BLANCO, bubble_rect, radius=20, width=3)
+        texto_tiempo_rect = texto_tiempo.get_rect(center=bubble_rect.center)
+        screen.blit(texto_tiempo, texto_tiempo_rect)
 
         objeto_actual_nombre = OBJETOS[objeto_actual_index] if objeto_actual_index < len(OBJETOS) else get_text("¡TERMINADO!", idioma)
-        # Traducir el nombre del objeto si está en el diccionario de traducciones
         objeto_nombre_traducido = get_text(objeto_actual_nombre, idioma) if objeto_actual_nombre in ["Osito de Peluche Roto", "Silla Rota", "Figura de Madera Rota"] else objeto_actual_nombre
-        texto_objeto = fuente.render(f"{get_text('OBJETO', idioma)}: {objeto_nombre_traducido}", True, AZUL_HERRAMIENTA)
-        screen.blit(texto_objeto, (ANCHO // 2 - texto_objeto.get_width() // 2, area_trabajo_rect.top + 20))
+        objeto_texto = f"{get_text('OBJETO', idioma)}: {objeto_nombre_traducido}"
+        objeto_surf, _ = render_text_shrink(objeto_texto, max_width=area_trabajo_rect.width - 40,
+                                            color=AZUL_HERRAMIENTA, base_size=40)
+        objeto_rect = objeto_surf.get_rect()
+        objeto_rect.center = (area_trabajo_rect.centerx, area_trabajo_rect.top + 40)
+        screen.blit(objeto_surf, objeto_rect)
 
-        CAJA_PISTA_ANCHO = 250
-        CAJA_PISTA_ALTO = 150
+        CAJA_PISTA_ANCHO = 260
+        CAJA_PISTA_ALTO = 170
         x_pista = 50
         y_pista = ALTO // 2 - CAJA_PISTA_ALTO // 2
-        pygame.draw.rect(screen, GRIS_CLARO, (x_pista, y_pista, CAJA_PISTA_ANCHO, CAJA_PISTA_ALTO), 0)
-        pygame.draw.rect(screen, BLANCO, (x_pista, y_pista, CAJA_PISTA_ANCHO, CAJA_PISTA_ALTO), 3)
-        texto_pista_titulo = pygame.font.Font(None, 30).render(get_text("HERRAMIENTA REQUERIDA", idioma), True, AZUL_HERRAMIENTA)
-        screen.blit(texto_pista_titulo, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_titulo.get_width() // 2, y_pista + 10))
+        pista_rect = pygame.Rect(x_pista, y_pista, CAJA_PISTA_ANCHO, CAJA_PISTA_ALTO)
+
+        draw_rounded_rect(screen, (255, 255, 200), pista_rect, radius=25)
+        draw_rounded_rect(screen, (255, 215, 0), pista_rect, radius=25, width=3)
+
+        pista_titulo_texto = get_text("HERRAMIENTA REQUERIDA", idioma)
+        pista_titulo_surf, _ = render_text_shrink(pista_titulo_texto, max_width=CAJA_PISTA_ANCHO - 20,
+                                                  color=AZUL_HERRAMIENTA, base_size=30)
+        pista_titulo_rect = pista_titulo_surf.get_rect()
+        pista_titulo_rect.center = (pista_rect.centerx, pista_rect.top + 25)
+        screen.blit(pista_titulo_surf, pista_titulo_rect)
 
         if not juego_finalizado and objeto_actual_index < len(OBJETOS) and objeto_reparado_timer == 0.0:
             herramientas_necesarias = REPARACION_ETAPAS[objeto_actual_index]
@@ -500,25 +547,50 @@ def run_level2(dificultad, idioma, screen):
             pista_tool_img = HERRAMIENTAS_IMGS.get(pista_tool_nombre)
             if pista_tool_img:
                 scaled_img = pygame.transform.scale(pista_tool_img, (80, 80))
-                img_pista_x = x_pista + CAJA_PISTA_ANCHO // 2 - scaled_img.get_width() // 2
-                img_pista_y = y_pista + 50
+                img_pista_x = pista_rect.centerx - scaled_img.get_width() // 2
+                img_pista_y = pista_rect.top + 60
                 screen.blit(scaled_img, (img_pista_x, img_pista_y))
             else:
-                texto_pista_contenido = fuente.render(pista_tool_nombre, True, ROJO_ROTO)
-                screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
+                pista_contenido_surf, _ = render_text_shrink(
+                    pista_tool_nombre, max_width=CAJA_PISTA_ANCHO - 20,
+                    color=ROJO_ROTO, base_size=32
+                )
+                pista_contenido_rect = pista_contenido_surf.get_rect()
+                pista_contenido_rect.center = (pista_rect.centerx, pista_rect.top + 80)
+                screen.blit(pista_contenido_surf, pista_contenido_rect)
         elif objeto_reparado_timer > 0.0:
-            texto_pista_contenido = fuente.render(get_text("REPARADO", idioma), True, VERDE_REPARACION)
-            screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
+            pista_contenido_surf, _ = render_text_shrink(
+                get_text("REPARADO", idioma), max_width=CAJA_PISTA_ANCHO - 20,
+                color=VERDE_REPARACION, base_size=36
+            )
+            pista_contenido_rect = pista_contenido_surf.get_rect()
+            pista_contenido_rect.center = (pista_rect.centerx, pista_rect.centery)
+            screen.blit(pista_contenido_surf, pista_contenido_rect)
         else:
-            texto_pista_contenido = pygame.font.Font(None, 30).render(get_text("FIN DEL JUEGO", idioma), True, ROJO_ROTO)
-            screen.blit(texto_pista_contenido, (x_pista + CAJA_PISTA_ANCHO // 2 - texto_pista_contenido.get_width() // 2, y_pista + 50))
+            pista_contenido_surf, _ = render_text_shrink(
+                get_text("FIN DEL JUEGO", idioma), max_width=CAJA_PISTA_ANCHO - 20,
+                color=ROJO_ROTO, base_size=30
+            )
+            pista_contenido_rect = pista_contenido_surf.get_rect()
+            pista_contenido_rect.center = (pista_rect.centerx, pista_rect.centery)
+            screen.blit(pista_contenido_surf, pista_contenido_rect)
 
         for herramienta in herramientas_list:
             if herramienta.seleccionada and objeto_reparado_timer == 0.0:
-                pygame.draw.rect(screen, AMARILLO_SELECCION, herramienta.rect.inflate(10, 10), 5)
+                sel_rect = herramienta.rect.inflate(12, 12)
+                draw_rounded_rect(screen, AMARILLO_SELECCION, sel_rect, radius=26, width=5)
+
             screen.blit(herramienta.image, herramienta.rect)
-            texto_nombre = pygame.font.Font(None, 24).render(herramienta.nombre, True, BLANCO)
-            screen.blit(texto_nombre, (herramienta.rect.x + 5, herramienta.rect.y + 5))
+
+            nombre_max_width = herramienta.rect.width - 16
+            nombre_surf, _ = render_text_shrink(
+                herramienta.nombre, max_width=nombre_max_width,
+                color=BLANCO, base_size=26
+            )
+            nombre_rect = nombre_surf.get_rect()
+            nombre_rect.centerx = herramienta.rect.centerx
+            nombre_rect.bottom = herramienta.rect.bottom - 4
+            screen.blit(nombre_surf, nombre_rect)
 
         if objeto_actual_index < len(OBJETOS) and OBJETOS[objeto_actual_index] in OBJETO_IMAGENES:
             obj_name = OBJETOS[objeto_actual_index]
@@ -536,8 +608,10 @@ def run_level2(dificultad, idioma, screen):
             flash_surface.fill(VERDE_TRANSPARENTE)
             screen.blit(flash_surface, (0, 0))
         
-        # Dibujar enemigo distractor (sobre todo lo demás)
         enemigo.draw(screen)
+
+        # MENSAJE INFERIOR
+        modo_tutorial = False
 
         if objeto_reparado_timer > 0.0:
             estado_texto = f"{get_text('OBJETO REPARADO! Siguiente objeto en', idioma)} {int(objeto_reparado_timer) + 1} {get_text('segundos...', idioma)}"
@@ -550,15 +624,40 @@ def run_level2(dificultad, idioma, screen):
             estado_texto = mensaje_feedback
             color_estado = ROJO_ROTO if vidas <= 0 or tiempo_restante <= 0 else VERDE_REPARACION
         else:
-            estado_texto = get_text("Presiona ENTER para usar la herramienta seleccionada", idioma)
-            color_estado = BLANCO
+            modo_tutorial = True
 
-        texto_estado = fuente.render(estado_texto, True, color_estado)
-        screen.blit(texto_estado, (ANCHO // 2 - texto_estado.get_width() // 2, ALTO - 60))
+        if not modo_tutorial:
+            estado_surf, _ = render_text_shrink(
+                estado_texto, max_width=ANCHO - 200, color=color_estado, base_size=32
+            )
+            estado_rect = estado_surf.get_rect()
+            estado_rect.center = (ANCHO // 2, ALTO - 40)
+            screen.blit(estado_surf, estado_rect)
+        else:
+            banner_width = min(ANCHO - 100, 900)
+            banner_rect = pygame.Rect(0, 0, banner_width, 70)
+            banner_rect.center = (ANCHO // 2, ALTO - 45)
+
+            # Fondo rosa neón y borde amarillo
+            draw_rounded_rect(screen, (255, 20, 147), banner_rect, radius=25)
+            draw_rounded_rect(screen, (255, 255, 0), banner_rect, radius=25, width=4)
+
+            font_banner = pygame.font.Font(None, 36)
+
+            text1 = font_banner.render("Presiona ", True, BLANCO)
+            text2 = font_banner.render("ENTER", True, (255, 255, 0))
+            text3 = font_banner.render(" para usar la herramienta seleccionada", True, BLANCO)
+
+            total_width = text1.get_width() + text2.get_width() + text3.get_width()
+            start_x = banner_rect.centerx - total_width // 2
+            y = banner_rect.centery - text1.get_height() // 2
+
+            screen.blit(text1, (start_x, y))
+            screen.blit(text2, (start_x + text1.get_width(), y))
+            screen.blit(text3, (start_x + text1.get_width() + text2.get_width(), y))
 
         pygame.display.flip()
 
-        # Manejo de finalización
         if juego_finalizado:
             victoria = objeto_actual_index >= len(OBJETOS)
             
