@@ -40,9 +40,9 @@ COLOR_CUADRO_SELECCIONADO = (255, 170, 0)  # Naranja/Amarillo para selección de
 # Se añadió "preview_image" para la imagen de vista previa
 ETAPAS = [
     {"short": "ETAPA 1", "long": "LIMPIEZA DEL RÍO", "return_key": "level1", "preview_image": "img/rio.png"},
-    {"short": "ETAPA 2", "long": "REPARACIÓN DE OBJETOS", "return_key": "level2", "preview_image": None},
-    {"short": "ETAPA 3", "long": "FÁBRICA DE REVALORIZACIÓN", "return_key": "level3", "preview_image": None},
-    {"short": "ETAPA FINAL", "long": "BATALLA FINAL", "return_key": "level_final", "preview_image": None},
+    {"short": "ETAPA 2", "long": "REPARACIÓN DE OBJETOS", "return_key": "level2", "preview_image": "img/previa_2.png"},
+    {"short": "ETAPA 3", "long": "FÁBRICA DE REVALORIZACIÓN", "return_key": "level3", "preview_image": "img/previa_3.png"},
+    {"short": "ETAPA FINAL", "long": "BATALLA FINAL", "return_key": "level_final", "preview_image": "img/previa_fin.png"},
 ]
 dificultad = ["Principiante", "Intermedio", "Profesional"]
 BUTTON_H = 55 # Altura estándar de botones largos
