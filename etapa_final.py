@@ -1,18 +1,21 @@
-import pygame
+import os
 import sys
 import random
+import pygame
 from pause import mostrar_menu_pausa
 from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
 
-# Estructura básica de la etapa final (esqueleto - imágenes/sonidos se añadirán después)
+# Final boss stage (Sliks-like) — cleaned, with boss HP bar and UI
 
 WIDTH = 1540
 HEIGHT = 785
 FPS = 60
 
+ASSET_DIR = os.path.join(os.path.dirname(__file__), 'img')
+SOUND_DIR = os.path.join(os.path.dirname(__file__), 'sonido')
 
-def load_image_safe(path, size=None, fallback_color=(200, 200, 200)):
-	"""Carga una imagen y si falla devuelve una Surface de fallback con etiqueta."""
+
+def load_image_safe(path, size=None, fallback_color=(100, 100, 100)):
 	try:
 		img = pygame.image.load(path).convert_alpha()
 		if size:
@@ -24,340 +27,489 @@ def load_image_safe(path, size=None, fallback_color=(200, 200, 200)):
 		s.fill(fallback_color)
 		try:
 			font = pygame.font.SysFont(None, 14)
-			label = font.render(path.split('/')[-1], True, (0, 0, 0))
+			label = font.render(os.path.basename(path), True, (0, 0, 0))
 			s.blit(label, (4, 4))
 		except Exception:
 			pass
 		return s
 
 
+def _load_sound(path):
+	try:
+		return pygame.mixer.Sound(path)
+	except Exception:
+		return None
+
+
 class EtapaFinal:
-	"""Clase que encapsula la etapa final (estructura, estados y dibujos).
-
-	Por ahora es un esqueleto: placeholders para jugador, jefe, ataques y simbología.
-	Imágenes reales y mecánicas se agregarán más adelante.
-	"""
-
 	def __init__(self, screen):
 		self.screen = screen
 		self.clock = pygame.time.Clock()
 		self.fps = FPS
 
-		# Estados: 'intro' -> 'battle' -> 'victory'/'game_over'
-		self.state = 'intro'
-		self.ticks = 0
+		# Assets
+		self.bg = load_image_safe(os.path.join(ASSET_DIR, 'fondo_final.jpg'), (WIDTH, HEIGHT), (18,18,28))
+		# Load gato frames much larger per latest user request
+		self.gato_frames = [load_image_safe(os.path.join(ASSET_DIR, f'gato_final{i}.png'), size=(520, 520)) for i in range(1,7)]
+		# Make the player (pibble) noticeably bigger as requested
+		self.player_frames = [load_image_safe(os.path.join(ASSET_DIR, f'pibble_ang{i}.png'), size=(80, 80)) for i in range(1,7)]
+		# store player sprite dimensions for collisions/ground calculations
+		self.player_w = self.player_frames[0].get_width()
+		self.player_h = self.player_frames[0].get_height()
+		heart_path = os.path.join(ASSET_DIR, 'heart.png')
+		self.heart_img = load_image_safe(heart_path, (28,28)) if os.path.exists(heart_path) else None
+		warn_path = os.path.join(ASSET_DIR, 'advertencia.png')
+		self.warn_img = load_image_safe(warn_path, (64,64)) if os.path.exists(warn_path) else None
 
-		# Cargar assets placeholders (se pueden reemplazar por imágenes reales más tarde)
-		self.player_img = load_image_safe('img/player_placeholder.png', (48, 48), (100, 180, 250))
-		self.boss_img = load_image_safe('img/boss_placeholder.png', (140, 140), (220, 80, 80))
-		self.soul_img = load_image_safe('img/soul_placeholder.png', (24, 24), (255, 200, 0))
+		try:
+			pygame.mixer.init()
+		except Exception:
+			pass
+		self.warn_sound = _load_sound(os.path.join(SOUND_DIR, 'advertencia.mp3'))
+		self.laser_sound = _load_sound(os.path.join(SOUND_DIR, 'laser.mp3'))
+		# Make warning sound a bit quieter so it's less jarring
+		if self.warn_sound:
+			try:
+				self.warn_sound.set_volume(0.28)
+			except Exception:
+				pass
 
-		# Simbología izquierda (lista de rutas que luego se reemplazarán por imágenes reales)
-		self.legend_images = [
-			load_image_safe('img/legend_1.png', (64, 64)),
-			load_image_safe('img/legend_2.png', (64, 64)),
-			load_image_safe('img/legend_3.png', (64, 64)),
-		]
+		# Stage
+		self.platform_h = 100
+		self.platform_rect = pygame.Rect(0, HEIGHT - self.platform_h, WIDTH, self.platform_h)
 
-		# Propiedades de jugador y jefe (valores iniciales y placeholders)
-		# Battle box (área donde se mueve el 'soul' al estilo Undertale)
-		self.box_rect = pygame.Rect(WIDTH // 2 - 150, HEIGHT - 260, 300, 160)
-		# Posición del jugador inicial dentro del cuadro
-		self.player_pos = pygame.Vector2(self.box_rect.centerx, self.box_rect.centery)
-		self.player_hp = 20
-		self.player_max_hp = 20
-		self.player_speed = 4.5
-		self.player_invuln = 0  # frames de invulnerabilidad tras recibir daño
+		# Player (place so the sprite stands on the black platform)
+		self.player_pos = pygame.Vector2(180, HEIGHT - self.platform_h - (self.player_h // 2))
+		self.player_vel = pygame.Vector2(0,0)
+		self.player_speed = 5.0
+		self.gravity = 0.6
+		self.jump_speed = -13
+		self.on_ground = False
+		self.player_frame = 0
+		self.player_anim_timer = 0
+		self.player_max_hp = 10
+		self.player_hp = self.player_max_hp
+		self.player_invuln = 0
 
-		self.boss_pos = pygame.Vector2(WIDTH // 2, 180)
-		self.boss_hp = 60
-		self.boss_max_hp = 60
+		# Attack
+		self.attack_cooldown = 600
+		self.last_attack_time = -9999
+		self.attack_range = 110
+		self.attacking = False
+		self.attack_anim_start = 0
+		self.ATTACK_ANIM_DURATION = 320
+		self.ATTACK_HIT_TIME = 160
+		self.attack_hit_applied = False
 
-		# Lista de ataques activos (estructuras simples por ahora)
-		self.attacks = []  # cada ataque: dict con tipo, pos, vel, lifetime
+		# Boss: compute sprite size and place the cat standing on the black platform
+		boss_w, boss_h = self.gato_frames[0].get_size()
+		self.gato_pos = pygame.Vector2(WIDTH//2, HEIGHT - self.platform_h - boss_h//2 - 8)
+		self.gato_dir = 1
+		self.gato_speed = 2.0
+		# keep the gato fully on-screen by constraining its center within margins
+		left_bound = 120 + boss_w // 2
+		right_bound = WIDTH - 120 - boss_w // 2
+		self.gato_bounds = (left_bound, right_bound)
+		self.gato_max_hp = 30
+		self.gato_hp = self.gato_max_hp
+		self.gato_frame = 0
+		self.gato_anim_timer = 0
+		self.gato_hit_timer = 0
+		self.GATO_HIT_DURATION = 800
 
-		# Fuentes
+		# Death/victory sequence
+		self.gato_dead = False
+		self.death_start = 0
+		self.DEATH_SHAKE_DURATION = 900
+		self.DEATH_DISAPPEAR_DELAY = 200
+		self.CONFETTI_DURATION = 2200
+		self.confetti = []
+		self.post_death_action = None
+
+		# Attacks / lasers
+		self.WARNING_MIN = 1200
+		self.WARNING_MAX = 2200
+		self.WARNING_DURATION = 700
+		self.LASER_DURATION = 700
+		self.LASER_WIDTH = 96
+		self.LASER_DAMAGE = 1
+		self.SCRATCH_DAMAGE = 0
+
+		self.next_warning_time = pygame.time.get_ticks() + random.randint(self.WARNING_MIN, self.WARNING_MAX)
+		self.warning_active = False
+		self.warning_start = 0
+		self.warning_x = 0
+		self.lasers = []
+
+		# UI fonts
 		self.font = pygame.font.SysFont(None, 28)
 		self.font_large = pygame.font.SysFont(None, 44)
 
-	def start_battle(self):
-		self.state = 'battle'
-		self.ticks = 0
+		# Input flags
+		self.moving_left = False
+		self.moving_right = False
 
-	def reset(self):
-		self.state = 'intro'
-		self.ticks = 0
-		self.player_hp = self.player_max_hp
-		self.boss_hp = self.boss_max_hp
-		self.attacks.clear()
+		self.running = True
+
+        
+
+	def spawn_confetti(self, count=40):
+		# create simple confetti particles around the boss position
+		for i in range(count):
+			angle = random.uniform(0, 360)
+			s = random.randint(6, 14)
+			speed = random.uniform(1.5, 5.0)
+			vel = pygame.Vector2(random.uniform(-1.5, 1.5) * speed, random.uniform(-3.5, -1.0) * speed)
+			col = random.choice([(240,80,80), (240,200,60), (80,200,120), (120,160,240), (220,120,240)])
+			p = {
+				'pos': pygame.Vector2(self.gato_pos.x + random.randint(-40,40), self.gato_pos.y + random.randint(-40,40)),
+				'vel': vel,
+				'size': s,
+				'color': col,
+				'life': random.randint(900, 1800),
+				'angle': angle,
+				'spin': random.uniform(-6, 6)
+			}
+			self.confetti.append(p)
+        
 
 	def handle_events(self):
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
-				pygame.quit()
-				sys.exit()
-
+				pygame.quit(); sys.exit()
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_ESCAPE:
-					# Pausa
-					accion = mostrar_menu_pausa(self.screen, HEIGHT, WIDTH)
-					if accion == 'salir':
-						return 'salir_menu'
+					# Open pause menu and react to its selection
+					try:
+						accion = mostrar_menu_pausa(self.screen, HEIGHT, WIDTH)
+					except Exception:
+						# Fallback: if pause menu fails, exit to menu
+						accion = 'salir'
+
+					if accion == 'reanudar':
+						# continue the level
+						continue
 					if accion == 'reiniciar':
 						return 'reiniciar'
-
-				if self.state == 'intro' and event.key == pygame.K_SPACE:
-					self.start_battle()
-
-				# Placeholder: tecla para simular daño al jefe
-				if self.state == 'battle' and event.key == pygame.K_a:
-					self.boss_hp = max(0, self.boss_hp - 5)
-					if self.boss_hp == 0:
-						self.state = 'victory'
-
-				# Placeholder: tecla para simular daño al jugador
-				if self.state == 'battle' and event.key == pygame.K_s:
-					self.player_hp = max(0, self.player_hp - 5)
-					if self.player_hp == 0:
-						self.state = 'game_over'
-
+					if accion == 'salir':
+						return 'salir_menu'
+				if event.key in (pygame.K_a, pygame.K_LEFT): self.moving_left = True
+				if event.key in (pygame.K_d, pygame.K_RIGHT): self.moving_right = True
+				if event.key in (pygame.K_w, pygame.K_UP, pygame.K_SPACE):
+					if self.on_ground:
+						self.player_vel.y = self.jump_speed; self.on_ground = False
+				if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+					now = pygame.time.get_ticks()
+					if now - self.last_attack_time >= self.attack_cooldown:
+						self.last_attack_time = now
+						self.attacking = True; self.attack_anim_start = now; self.attack_hit_applied = False
+			if event.type == pygame.KEYUP:
+				if event.key in (pygame.K_a, pygame.K_LEFT): self.moving_left = False
+				if event.key in (pygame.K_d, pygame.K_RIGHT): self.moving_right = False
 		return None
 
 	def update(self):
-		self.ticks += 1
+		dt = self.clock.tick(self.fps)
+		now = pygame.time.get_ticks()
 
-		if self.state == 'intro':
-			# animación/espera breve antes de comenzar
-			if self.ticks > 90:
-				# esperar que el jugador pulse espacio para empezar
+		# Player movement
+		vx = 0
+		if self.moving_left: vx -= self.player_speed
+		if self.moving_right: vx += self.player_speed
+		self.player_vel.x = vx
+		self.player_vel.y += self.gravity
+		self.player_pos += self.player_vel
+		# ground calculation uses the player's sprite height (centered)
+		ground_y = HEIGHT - self.platform_h - (self.player_h // 2)
+		if self.player_pos.y >= ground_y:
+			self.player_pos.y = ground_y; self.player_vel.y = 0; self.on_ground = True
+		self.player_pos.x = max(24, min(WIDTH-24, self.player_pos.x))
+
+		# Animations
+		self.player_anim_timer += dt
+		if self.player_anim_timer > 80:
+			self.player_anim_timer = 0
+			self.player_frame = (self.player_frame + 1) % len(self.player_frames)
+		self.gato_anim_timer += dt
+		if self.gato_anim_timer > 100:
+			self.gato_anim_timer = 0
+			self.gato_frame = (self.gato_frame + 1) % len(self.gato_frames)
+
+		# Boss patrol
+		self.gato_pos.x += self.gato_speed * self.gato_dir
+		if self.gato_pos.x < self.gato_bounds[0]: self.gato_pos.x = self.gato_bounds[0]; self.gato_dir = 1
+		if self.gato_pos.x > self.gato_bounds[1]: self.gato_pos.x = self.gato_bounds[1]; self.gato_dir = -1
+
+		# Warning -> lasers
+		if not self.warning_active and not self.lasers and now >= self.next_warning_time:
+			target_x = int(self.gato_pos.x + random.randint(-140,140))
+			target_x = max(40, min(WIDTH-40, target_x))
+			self.warning_x = target_x; self.warning_active = True; self.warning_start = now
+			try:
+				if self.warn_sound: self.warn_sound.play()
+			except Exception:
 				pass
 
-		elif self.state == 'battle':
-			# Lógica simple de generación de ataques placeholder
-			if self.ticks % 60 == 0:
-				# generar un ataque aleatorio
-				atk = {
-					'type': random.choice(['bone', 'gaster', 'laser']),
-					'pos': pygame.Vector2(random.randint(200, WIDTH - 200), -40),
-					'vel': pygame.Vector2(0, random.uniform(2.0, 4.0)),
-					'life': 300
-				}
-				self.attacks.append(atk)
+		if self.warning_active and now - self.warning_start >= self.WARNING_DURATION:
+			self.warning_active = False
+			num = random.choice([1,1,2])
+			self.lasers = []
+			for i in range(num):
+				lx = int(self.warning_x + random.randint(-30,30) + i*(self.LASER_WIDTH+20))
+				lx = max(0, min(WIDTH, lx))
+				self.lasers.append({'x':lx, 'start':now, 'duration':self.LASER_DURATION})
+			try:
+				if self.laser_sound: self.laser_sound.play()
+			except Exception:
+				pass
 
-			# actualizar ataques
-			for atk in list(self.attacks):
-				atk['pos'] += atk['vel']
-				atk['life'] -= 1
-				if atk['pos'].y > HEIGHT + 100 or atk['life'] <= 0:
-					try:
-						self.attacks.remove(atk)
-					except ValueError:
-						pass
+		# Laser lifespan
+		if self.lasers:
+			alive = [L for L in self.lasers if now - L['start'] < L['duration']]
+			if not alive: self.next_warning_time = now + random.randint(self.WARNING_MIN, self.WARNING_MAX)
+			self.lasers = alive
 
-				# Movimiento del jugador dentro del battle box (WASD o flechas)
-				keys = pygame.key.get_pressed()
-				dx = 0.0
-				dy = 0.0
-				if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-					dx -= self.player_speed
-				if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-					dx += self.player_speed
-				if keys[pygame.K_UP] or keys[pygame.K_w]:
-					dy -= self.player_speed
-				if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-					dy += self.player_speed
+		# Laser collision (use dynamic player size)
+		if self.lasers and self.player_invuln <= 0:
+			for L in self.lasers:
+				laser_rect = pygame.Rect(L['x'] - self.LASER_WIDTH//2, 0, self.LASER_WIDTH, HEIGHT - self.platform_h)
+				player_rect = pygame.Rect(int(self.player_pos.x) - self.player_w//2,
+										  int(self.player_pos.y) - self.player_h//2,
+										  self.player_w, self.player_h)
+				if laser_rect.colliderect(player_rect):
+					self.player_hp = max(0, self.player_hp - self.LASER_DAMAGE)
+					self.player_invuln = 700
+					break
 
-				# Aplicar movimiento y mantener dentro de box
-				new_pos = self.player_pos + pygame.Vector2(dx, dy)
-				pad = 8
-				min_x = self.box_rect.left + pad
-				max_x = self.box_rect.right - pad
-				min_y = self.box_rect.top + pad
-				max_y = self.box_rect.bottom - pad
-				new_pos.x = max(min_x, min(max_x, new_pos.x))
-				new_pos.y = max(min_y, min(max_y, new_pos.y))
-				self.player_pos = new_pos
+		# Boss scratch (use actual sprite rects)
+		gf_now = self.gato_frames[self.gato_frame]
+		gato_rect = gf_now.get_rect(center=(int(self.gato_pos.x), int(self.gato_pos.y)))
+		player_rect = pygame.Rect(int(self.player_pos.x) - self.player_w//2,
+								  int(self.player_pos.y) - self.player_h//2,
+								  self.player_w, self.player_h)
+		if gato_rect.colliderect(player_rect) and self.player_invuln <= 0:
+			if self.SCRATCH_DAMAGE > 0:
+				self.player_hp = max(0, self.player_hp - self.SCRATCH_DAMAGE)
+			self.player_invuln = 600
 
-				# Decrementar invulnerabilidad si aplica
-				if self.player_invuln > 0:
-					self.player_invuln -= 1
+		if self.player_invuln > 0:
+			self.player_invuln = max(0, self.player_invuln - dt)
 
-				# Colisiones simples: si un ataque toca al jugador, resta vida y activa invuln
-				for atk in list(self.attacks):
-					# distancia simple
-					if (atk['pos'] - self.player_pos).length() < 22:
-						if self.player_invuln == 0:
-							self.player_hp = max(0, self.player_hp - 1)
-							self.player_invuln = 60  # 1 segundo aprox a 60 FPS
-						try:
-							self.attacks.remove(atk)
-						except ValueError:
-							pass
-						if self.player_hp == 0:
-							self.state = 'game_over'
+		# Attack animation handling
+		if self.attacking:
+			elapsed = now - self.attack_anim_start
+			if not self.attack_hit_applied and elapsed >= self.ATTACK_HIT_TIME:
+				if abs(self.player_pos.x - self.gato_pos.x) <= self.attack_range:
+					self.gato_hp = max(0, self.gato_hp - 3)
+					self.gato_hit_timer = now
+				self.attack_hit_applied = True
+			if elapsed >= self.ATTACK_ANIM_DURATION:
+				self.attacking = False
 
-		elif self.state in ('victory', 'game_over'):
-			# dejar que el usuario vea la pantalla y presione una tecla para continuar
-			pass
+		# Death sequence trigger
+		if self.gato_hp <= 0 and not self.gato_dead:
+			self.gato_dead = True
+			self.death_start = now
+			# stop boss movement
+			self.gato_speed = 0
+			# small sound or effect could be played here
 
-	def draw_legend_left(self):
-		# rectángulo vertical en la izquierda con fondo blanco y casillas para imágenes
-		panel_w = 140
-		panel_h = HEIGHT - 100
-		panel_x = 10
-		panel_y = 50
+		# If in death/confetti phase, update particles instead of normal boss logic
+		if self.gato_dead:
+			# Confetti spawn after disappearance delay
+			death_elapsed = now - self.death_start
+			if death_elapsed >= self.DEATH_DISAPPEAR_DELAY and not self.confetti:
+				# spawn confetti pieces
+				self.spawn_confetti(60)
 
-		# Sombra
-		shadow = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-		shadow.fill((0, 0, 0, 60))
-		self.screen.blit(shadow, (panel_x + 6, panel_y + 6))
+			# update confetti
+			if self.confetti:
+				alive = []
+				for p in self.confetti:
+					p['vel'].y += 0.25  # gravity
+					p['pos'] += p['vel']
+					p['life'] -= dt
+					p['angle'] += p.get('spin', 0)
+					if p['life'] > 0:
+						alive.append(p)
+				self.confetti = alive
 
-		panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-		panel.fill((255, 255, 255, 230))
-		pygame.draw.rect(panel, (0, 0, 0), panel.get_rect(), 2, border_radius=6)
-		self.screen.blit(panel, (panel_x, panel_y))
+			# after confetti duration, show victory menu once
+			if death_elapsed >= self.DEATH_SHAKE_DURATION + self.CONFETTI_DURATION and self.post_death_action is None:
+				try:
+					self.post_death_action = mostrar_menu_victoria(self.screen, 'level_final')
+				except Exception:
+					self.post_death_action = 'salir'
 
-		# Dibujar casillas blancas centradas en el panel
-		gap = 18
-		box_size = 64
-		start_y = panel_y + 20
-		for i, img in enumerate(self.legend_images):
-			box_x = panel_x + (panel_w - box_size) // 2
-			box_y = start_y + i * (box_size + gap)
-			pygame.draw.rect(self.screen, (255, 255, 255), (box_x - 4, box_y - 4, box_size + 8, box_size + 8), 0, border_radius=6)
-			# fondo blanco pequeño
-			inner = pygame.Surface((box_size, box_size), pygame.SRCALPHA)
-			inner.fill((255, 255, 255))
-			self.screen.blit(inner, (box_x, box_y))
-			# imagen (placeholder)
-			img_rect = img.get_rect(center=(box_x + box_size // 2, box_y + box_size // 2))
-			self.screen.blit(img, img_rect)
+	def draw_warning(self):
+		if self.warning_active:
+			x = int(self.warning_x)
+			if self.warn_img:
+				w = self.warn_img.get_width(); self.screen.blit(self.warn_img, (x-w//2, 40))
+			else:
+				tri = pygame.Surface((72,72), pygame.SRCALPHA)
+				pygame.draw.polygon(tri, (240,200,30), [(36,4),(68,64),(4,64)])
+				pygame.draw.rect(tri, (160,0,0), (32,16,8,28))
+				self.screen.blit(tri, (x-36,24))
+			txt = self.font.render('¡ADVERTENCIA!', True, (255,220,40))
+			self.screen.blit(txt, (x - txt.get_width()//2, 100))
+
+	def draw_lasers(self):
+		for L in self.lasers:
+			alpha = 170
+			surf = pygame.Surface((self.LASER_WIDTH, HEIGHT - self.platform_h), pygame.SRCALPHA)
+			surf.fill((220,30,30,alpha))
+			self.screen.blit(surf, (L['x'] - self.LASER_WIDTH//2, 0))
 
 	def draw(self):
-		# Fondo simple
-		self.screen.fill((20, 20, 30))
+		# Background and platform
+		self.screen.blit(self.bg, (0,0))
+		pygame.draw.rect(self.screen, (0,0,0), self.platform_rect)
 
-		# Dibujar boss
-		boss_rect = self.boss_img.get_rect(center=(int(self.boss_pos.x), int(self.boss_pos.y)))
-		self.screen.blit(self.boss_img, boss_rect)
+		# Player
+		pf = self.player_frames[self.player_frame]
+		pr = pf.get_rect(center=(int(self.player_pos.x), int(self.player_pos.y)))
+		if self.player_invuln > 0 and (self.player_invuln // 80) % 2 == 0:
+			temp = pf.copy(); temp.fill((255,255,255,120), special_flags=pygame.BLEND_RGBA_ADD); self.screen.blit(temp, pr)
+		else:
+			self.screen.blit(pf, pr)
 
-		# Dibujar battle box (cuadro donde se mueve el jugador al estilo Undertale)
-		pygame.draw.rect(self.screen, (0, 0, 0), self.box_rect.inflate(6, 6))
-		pygame.draw.rect(self.screen, (255, 255, 255), self.box_rect)
+		# Attack effect
+		if self.attacking:
+			facing = 1 if self.player_pos.x < self.gato_pos.x else -1
+			slash_w, slash_h = 64, 28
+			slash = pygame.Surface((slash_w, slash_h), pygame.SRCALPHA)
+			pygame.draw.ellipse(slash, (255,200,60,200), (0,0,slash_w,slash_h))
+			sx = int(self.player_pos.x + facing*28 - slash_w//2); sy = int(self.player_pos.y - 10)
+			if facing == -1: slash = pygame.transform.flip(slash, True, False)
+			self.screen.blit(slash, (sx, sy))
 
-		# Dibujar ataques (se ven dentro y fuera de la caja)
-		for atk in self.attacks:
-			if atk['type'] == 'bone':
-				pygame.draw.rect(self.screen, (240, 240, 240), (int(atk['pos'].x) - 8, int(atk['pos'].y) - 20, 16, 40))
-			elif atk['type'] == 'gaster':
-				pygame.draw.circle(self.screen, (180, 180, 255), (int(atk['pos'].x), int(atk['pos'].y)), 18)
-			elif atk['type'] == 'laser':
-				pygame.draw.line(self.screen, (255, 50, 50), (int(atk['pos'].x), int(atk['pos'].y)), (int(atk['pos'].x), HEIGHT), 4)
+		# Boss (possibly red when hit) / Death shake and disappearance
+		gf = self.gato_frames[self.gato_frame]
+		now = pygame.time.get_ticks()
+		if self.gato_dead:
+			death_elapsed = now - self.death_start
+			# during shake phase, draw gato with horizontal shake offset
+			if death_elapsed <= self.DEATH_SHAKE_DURATION:
+				shake_amount = 6 + int(6 * (death_elapsed / self.DEATH_SHAKE_DURATION))
+				offset_x = int(shake_amount * (1 if (death_elapsed // 40) % 2 == 0 else -1))
+				gr = gf.get_rect(center=(int(self.gato_pos.x) + offset_x, int(self.gato_pos.y)))
+				self.screen.blit(gf, gr)
+			else:
+				# after shake and disappear delay, gato is not drawn (disappeared)
+				pass
+		else:
+			gr = gf.get_rect(center=(int(self.gato_pos.x), int(self.gato_pos.y)))
+			if now - self.gato_hit_timer <= self.GATO_HIT_DURATION:
+				temp = gf.copy()
+				try: temp.fill((220,30,30,120), special_flags=pygame.BLEND_RGBA_ADD)
+				except Exception: pass
+				self.screen.blit(temp, gr)
+			else:
+				self.screen.blit(gf, gr)
 
-		# Dibujar jugador (soul) dentro del box - parpadea si está invulnerable
-		alpha = 255 if self.player_invuln == 0 or (self.player_invuln // 6) % 2 == 0 else 100
-		# círculo simple representando el 'soul'
-		surf = pygame.Surface((36, 36), pygame.SRCALPHA)
-		pygame.draw.circle(surf, (255, 200, 0, alpha), (18, 18), 14)
-		self.screen.blit(surf, (int(self.player_pos.x) - 18, int(self.player_pos.y) - 18))
+		# Warnings and lasers
+		self.draw_warning(); self.draw_lasers()
 
+		# Draw confetti particles (if any)
+		if self.confetti:
+			for p in self.confetti:
+				col = p['color']
+				x, y = int(p['pos'].x), int(p['pos'].y)
+				size = p['size']
+				# draw as rotated rect/ellipse approximation
+				surf = pygame.Surface((size, size), pygame.SRCALPHA)
+				surf.fill(col)
+				rotated = pygame.transform.rotate(surf, p.get('angle', 0))
+				self.screen.blit(rotated, (x - rotated.get_width()//2, y - rotated.get_height()//2))
 
-		# HUD: barras de vida
-		# Boss HP
-		hp_w = 420
-		hp_h = 24
-		hp_x = WIDTH // 2 - hp_w // 2
-		hp_y = 20
-		pygame.draw.rect(self.screen, (0, 0, 0), (hp_x - 4, hp_y - 4, hp_w + 8, hp_h + 8), 0, border_radius=6)
-		pygame.draw.rect(self.screen, (120, 0, 0), (hp_x, hp_y, hp_w, hp_h), 0, border_radius=6)
-		boss_frac = max(0, self.boss_hp / max(1, self.boss_max_hp))
-		pygame.draw.rect(self.screen, (255, 80, 80), (hp_x, hp_y, int(hp_w * boss_frac), hp_h), 0, border_radius=6)
-		text_boss = self.font.render(f"Jefe  {self.boss_hp}/{self.boss_max_hp}", True, (255, 255, 255))
-		self.screen.blit(text_boss, (hp_x + 8, hp_y - 2))
+		# UI: Boss HP bar (top center) - large and flashy
+		bar_w = 640; bar_h = 36
+		bx = WIDTH//2 - bar_w//2; by = 20
+		# panel behind bar
+		panel = pygame.Surface((bar_w+12, bar_h+12), pygame.SRCALPHA)
+		panel.fill((0,0,0,160))
+		pygame.draw.rect(panel, (255,255,255,30), panel.get_rect(), 2, border_radius=8)
+		self.screen.blit(panel, (bx-6, by-6))
+		# empty background
+		pygame.draw.rect(self.screen, (80, 20, 20), (bx, by, bar_w, bar_h), 0, border_radius=8)
+		# fill
+		frac = max(0.0, min(1.0, self.gato_hp / max(1, self.gato_max_hp)))
+		fill_w = int(bar_w * frac)
+		if fill_w > 0:
+			grad = pygame.Surface((fill_w, bar_h), pygame.SRCALPHA)
+			grad.fill((240,80,80))
+			# bright highlight
+			hi = pygame.Surface((fill_w, bar_h//2), pygame.SRCALPHA); hi.fill((255,140,140,80))
+			grad.blit(hi, (0,0))
+			self.screen.blit(grad, (bx, by))
+		# border and name
+		pygame.draw.rect(self.screen, (30,0,0), (bx, by, bar_w, bar_h), 3, border_radius=8)
+		name = self.font_large.render('GATO FINAL', True, (255,220,180))
+		self.screen.blit(name, (bx + 12, by + bar_h//2 - name.get_height()//2))
+		# numeric hp on right of bar
+		num = self.font.render(f'{self.gato_hp}/{self.gato_max_hp}', True, (255,255,255))
+		self.screen.blit(num, (bx + bar_w - num.get_width() - 12, by + bar_h//2 - num.get_height()//2))
 
-		# Player HP (esquina inferior izquierda)
-		ph_w = 220
-		ph_h = 18
-		ph_x = 180
-		ph_y = HEIGHT - 40
-		pygame.draw.rect(self.screen, (0, 0, 0), (ph_x - 4, ph_y - 4, ph_w + 8, ph_h + 8), 0, border_radius=6)
-		pygame.draw.rect(self.screen, (40, 40, 40), (ph_x, ph_y, ph_w, ph_h), 0, border_radius=6)
-		player_frac = max(0, self.player_hp / max(1, self.player_max_hp))
-		pygame.draw.rect(self.screen, (80, 200, 120), (ph_x, ph_y, int(ph_w * player_frac), ph_h), 0, border_radius=6)
-		text_player = self.font.render(f"Jugador  {self.player_hp}/{self.player_max_hp}", True, (255, 255, 255))
-		self.screen.blit(text_player, (ph_x + 6, ph_y - 22))
-
-		# Dibujar panel/simbología izquierda
-		self.draw_legend_left()
-
-		# Mensajes según estado
-		if self.state == 'intro':
-			title = self.font_large.render("ETAPA FINAL", True, (255, 255, 255))
-			sub = self.font.render("Presiona ESPACIO para empezar el combate", True, (200, 200, 200))
-			self.screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 40))
-			self.screen.blit(sub, (WIDTH // 2 - sub.get_width() // 2, HEIGHT // 2 + 10))
-
-		elif self.state == 'victory':
-			# Pantalla de victoria simple; luego se puede abrir mostrar_menu_victoria
-			text = self.font_large.render("¡VICTORIA!", True, (240, 220, 60))
-			self.screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - 20))
-
-		elif self.state == 'game_over':
-			text = self.font_large.render("DERROTA", True, (240, 80, 80))
-			self.screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 2 - 20))
+		# Player hearts UI (bottom-left)
+		hearts_total = self.player_max_hp
+		heart_w = 28; gap = 6; sx = 20; sy = HEIGHT - 44
+		for i in range(hearts_total):
+			x = sx + i * (heart_w + gap)
+			if self.heart_img:
+				img = self.heart_img.copy()
+				if i >= self.player_hp: img.fill((80,80,80,160), special_flags=pygame.BLEND_RGBA_MULT)
+				self.screen.blit(img, (x, sy))
+			else:
+				color = (220,40,40) if i < self.player_hp else (80,80,80)
+				pygame.draw.polygon(self.screen, color, [(x+6, sy+14),(x+14, sy+26),(x+22, sy+14),(x+14,sy+6)])
 
 		pygame.display.flip()
 
+	def run(self):
+		while self.running:
+			accion = self.handle_events()
+			if accion == 'salir_menu': return 'salir_menu'
+			self.update()
+			if self.player_hp <= 0: return 'derrota'
+			# Wait for death/confetti sequence to complete before returning victory
+			if self.gato_dead:
+				# if the post-death menu has been shown, forward its action
+				if self.post_death_action is not None:
+					return self.post_death_action
+			self.draw()
+
 
 def run_etapa_final(dificultad=None, idioma=None, screen=None):
-	"""Función de entrada para la etapa final. Devuelve códigos similares a los niveles:
-	'reiniciar', 'salir_menu', 'salir_juego', 'siguiente' (si aplica)"""
 	pygame.init()
+	try:
+		pygame.mixer.init()
+	except Exception:
+		pass
 
+	# If called standalone (no screen provided), create a window and start music
 	if screen is None:
 		screen = pygame.display.set_mode((WIDTH, HEIGHT))
+		# Try to play the stage music if present
+		try:
+			music_path = os.path.join(SOUND_DIR, 'final.mp3')
+			if os.path.exists(music_path):
+				pygame.mixer.music.load(music_path)
+				pygame.mixer.music.set_volume(0.3)
+				pygame.mixer.music.play(-1)
+		except Exception:
+			pass
 
-	etapa = EtapaFinal(screen)
-
-	running = True
-	while running:
-		etapa.clock.tick(FPS)
-
-		accion = etapa.handle_events()
-		if accion == 'salir_menu':
-			return 'salir_menu'
-		if accion == 'reiniciar':
-			return 'reiniciar'
-
-		etapa.update()
-
-		# Si la etapa llegó a victory/game_over podemos mostrar menús
-		if etapa.state == 'victory':
-			# mostrar menú de victoria (usa nivel id 'level_final' para indicar último)
-			opcion = mostrar_menu_victoria(screen, 'level_final')
-			if opcion == 'reintentar' or opcion == 'reintentar':
-				etapa.reset()
-				continue
-			elif opcion == 'siguiente':
-				return 'siguiente'
-			else:
-				return 'salir_menu'
-
-		if etapa.state == 'game_over':
-			opcion = mostrar_menu_derrota(screen)
-			if opcion == 'reintentar':
-				etapa.reset()
-				continue
-			else:
-				return 'salir_menu'
-
-		etapa.draw()
-
-	return 'salir_menu'
+	try:
+		etapa = EtapaFinal(screen)
+	except Exception:
+		import traceback
+		traceback.print_exc()
+		raise
+	return etapa.run()
 
 
 if __name__ == '__main__':
-	# Permite prueba rápida ejecutando este archivo directamente
 	pygame.init()
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
 	run_etapa_final(screen=screen)
