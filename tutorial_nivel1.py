@@ -81,100 +81,120 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
     WIDTH, HEIGHT = screen.get_size()
     clock = pygame.time.Clock()
     FPS = 60
+    # --- Load assets for the controls animation ---
+    KEY_IMG_SIZE = (260, 260)
+    try:
+        key_left = pygame.transform.scale(pygame.image.load("img/teclado_izquierda.png").convert_alpha(), KEY_IMG_SIZE)
+    except Exception:
+        key_left = pygame.Surface(KEY_IMG_SIZE, pygame.SRCALPHA); pygame.draw.rect(key_left, (200,200,200), key_left.get_rect())
+    try:
+        key_center = pygame.transform.scale(pygame.image.load("img/teclado1.png").convert_alpha(), KEY_IMG_SIZE)
+    except Exception:
+        key_center = pygame.Surface(KEY_IMG_SIZE, pygame.SRCALPHA); pygame.draw.rect(key_center, (200,200,200), key_center.get_rect())
+    try:
+        key_right = pygame.transform.scale(pygame.image.load("img/teclado_derecha.png").convert_alpha(), KEY_IMG_SIZE)
+    except Exception:
+        key_right = pygame.Surface(KEY_IMG_SIZE, pygame.SRCALPHA); pygame.draw.rect(key_right, (200,200,200), key_right.get_rect())
 
-    # Cargar imágenes del perrito (fallback si falla)
-    pibble_imgs = []
-    for i in range(1, 4):
-        try:
-            img = pygame.image.load(f"img/pibble_talk{i}.png").convert_alpha()
-            img = pygame.transform.scale(img, (150, 150))
-        except Exception:
-            img = pygame.Surface((150,150), pygame.SRCALPHA)
-            pygame.draw.ellipse(img, (200,200,200), img.get_rect())
-        pibble_imgs.append(img)
+    # Trash/bin image under the keys
+    try:
+        bin_img = pygame.image.load("img/boteVerde.png").convert_alpha()
+        bin_img = pygame.transform.scale(bin_img, (200, 200))
+    except Exception:
+        bin_img = pygame.Surface((96,96), pygame.SRCALPHA); pygame.draw.rect(bin_img, (0,150,0), bin_img.get_rect())
 
-    # teclas de dirección (fallback)
-    teclado_imgs = []
-    KEY_IMG_SIZE = (100, 100)
-    for path in ("img/teclado_izquierda.png","img/teclado1.png","img/teclado_derecha.png"):
-        try:
-            t = pygame.image.load(path).convert_alpha()
-            t = pygame.transform.scale(t, KEY_IMG_SIZE)
-        except Exception:
-            t = pygame.Surface(KEY_IMG_SIZE, pygame.SRCALPHA)
-            pygame.draw.rect(t,(200,200,200), t.get_rect())
-        teclado_imgs.append(t)
+    # Overlay and UI elements
+    overlay = pygame.Surface((WIDTH, HEIGHT)); overlay.fill((0,0,0)); overlay.set_alpha(160)
+    # Kid-friendly fonts: prefer Comic Sans, fallback to default
+    try:
+        title_font = pygame.font.SysFont('Comic Sans MS', 96, bold=True)
+    except Exception:
+        title_font = pygame.font.SysFont(None, 96, True)
+    try:
+        instr_font = pygame.font.SysFont('Comic Sans MS', 44)
+    except Exception:
+        instr_font = pygame.font.SysFont(None, 44)
+    try:
+        skip_font = pygame.font.SysFont('Comic Sans MS', 36, bold=True)
+    except Exception:
+        skip_font = pygame.font.SysFont(None, 36, True)
+    small_font = pygame.font.SysFont(None, 30)
 
-    falling_group = pygame.sprite.Group()
+    # Pre-render title + instruction with a soft shadow for a playful look
+    TITLE_TEXT = "CONTROLES"
+    title_shadow = title_font.render(TITLE_TEXT, True, (40, 40, 40))
+    title_surf = title_font.render(TITLE_TEXT, True, (255, 230, 80))
+    INSTR_TEXT = "Usa estos botones para arrastrar la basura"
+    instr_shadow = instr_font.render(INSTR_TEXT, True, (30, 30, 30))
+    instr_surf = instr_font.render(INSTR_TEXT, True, (255, 220, 60))
+    skip_button_rect = pygame.Rect(WIDTH - 200, 22, 160, 56)
 
-    dialogos = [
-        {"text": "PIBBLE (Perrito): ¡Guau, guau! ¡Al fin llegaste! Soy Pibble, el Guardián de la Galaxia Patitas, y he viajado por el espacio-tiempo hasta tu planeta.", "falling": None, "show_keys": False},
-        {"text": "Vine por una misión crítica: ¡detener a ese gato malvado, el Doctor Maullido! Está llenando tu mundo de basura y contaminación para que el planeta se extinga lentamente.", "falling": None, "show_keys": False},
-        {"text": "¡El río es nuestra primera prueba! ¡Tenemos que cruzarlo para avanzar a la siguiente etapa y detener su avance!", "falling": None, "show_keys": False},
-        {"text": "PIBBLE (Perrito): ¡Primero lo primero! Para movernos solo usa las flechas de dirección, izquierda y derecha en tu teclado.", "falling": None, "show_keys": True},
-        {"text": "Nuestro objetivo aquí es muy importante: ¡tenemos que recolectar 10 objetos clave antes de que se acabe el tiempo!", "falling": None, "show_keys": False},
-        {"text": "¡Cuidado! El Doctor Maullido está lanzando su basura alienígena. Hay que saber qué tomar y qué no.", "falling": "basura", "show_keys": False},
-        {"text": "¡ERROR ES CASTIGO! Si agarras algo que no es un objeto clave, ¡pierdes 1 punto! Solo recolecta lo que piden.", "falling": "basura", "show_keys": False},
-        {"text": "TRONCOS: Chocar con un tronco es muy molesto y te hace perder 2 puntos. ¡Esquívalos!", "falling": "tronco", "show_keys": False},
-        {"text": "¡Las Bombas!: ¡Estas son la peor amenaza! Mantente lejos!", "falling": "bomba", "show_keys": False},
-        {"text": "TIEMPO: ¡Tenemos poco tiempo! Si el reloj llega a cero, el Doctor Maullido escapa.", "falling": None, "show_keys": False},
-        {"text": "¡Concéntrate! Eres la última esperanza de este planeta. ¡Vamos a cruzar el río!", "falling": None, "show_keys": False},
-    ]
+    # Sequence: center -> left hold -> right hold (seconds)
+    seq = [('center', 0.6), ('left', 1.2), ('right', 1.2)]
+    cycles = 3
+    current_cycle = 0
+    step_index = 0
+    step_time = 0.0
 
-    font = pygame.font.SysFont(None, 28)
-    enter_text = font.render("Presiona ENTER para continuar...", True, (0, 0, 0))
-
-    overlay = pygame.Surface((WIDTH, HEIGHT))
-    overlay.fill((0,0,0))
-    overlay.set_alpha(150)
-
-    dialog_index = 0
-    # letra_index cuenta caracteres mostrados (incluye espacios)
-    letra_index = 0
-
-    # Precompute line-wrapped arrays for current dialog when needed
-    current_lines = []
-    total_chars = 0
-
-    def prepare_dialog(dlg):
-        nonlocal current_lines, total_chars, letra_index
-        current_lines = wrap_text(dlg["text"], font, text_panel_rect.width - 20)
-        # total chars counting lines concatenated with single spaces (to approximate positions)
-        total_chars = sum(len(l) for l in current_lines)
-        letra_index = 0
-
-    # Pre-create text rect
-    text_panel_rect = pygame.Rect(50, HEIGHT - 180, WIDTH - 220, 130)
-    skip_button_rect = pygame.Rect(WIDTH - 180, 25, 140, 50)
-
-    # Initialize first dialog lines
-    if dialogos:
-        prepare_dialog(dialogos[0])
+    # Positions and spacing
+    SPACING = 100
+    # center the block of 3 keys (left, center, right) with spacing
+    total_keys_w = 3 * KEY_IMG_SIZE[0] + 2 * SPACING
+    start_x = WIDTH // 2 - total_keys_w // 2
+    keys_x = start_x
+    keys_y = HEIGHT // 2 - 120
+    bin_y = keys_y + KEY_IMG_SIZE[1] + 50
+    bin_x = WIDTH // 2 - bin_img.get_width() // 2
+    bin_target_x = bin_x
 
     running = True
     while running:
         dt = clock.tick(FPS) / 1000.0
 
-        # Events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "salir_juego"
             if event.type == pygame.KEYDOWN:
+                # ENTER ends the tutorial immediately
                 if event.key == pygame.K_RETURN:
-                    # Si texto no está completo: mostrar todo
-                    if letra_index < total_chars:
-                        letra_index = total_chars
-                    else:
-                        # avanzar al siguiente diálogo
-                        dialog_index += 1
-                        falling_group.empty()
-                        if dialog_index >= len(dialogos):
-                            running = False
-                        else:
-                            prepare_dialog(dialogos[dialog_index])
+                    return True
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if skip_button_rect.collidepoint(event.pos):
                     return True
+
+        # Update step timer
+        step_time += dt
+        cur_name, cur_dur = seq[step_index]
+        if step_time >= cur_dur:
+            step_time = 0.0
+            step_index += 1
+            # play blip when advancing step
+            try:
+                if blip_sound:
+                    blip_sound.play()
+            except Exception:
+                pass
+            if step_index >= len(seq):
+                step_index = 0
+                current_cycle += 1
+                if current_cycle >= cycles:
+                    # finished cycles — tutorial complete
+                    return True
+
+        # Determine which key to show pressed and bin target
+        cur_name, cur_dur = seq[step_index]
+        show_left = (cur_name == 'left')
+        show_right = (cur_name == 'right')
+
+        if show_left:
+            bin_target_x = WIDTH // 2 - 220
+        elif show_right:
+            bin_target_x = WIDTH // 2 + 80
+        else:
+            bin_target_x = WIDTH // 2 - bin_img.get_width() // 2
+
+        # Smoothly move bin toward target
+        bin_x += (bin_target_x - bin_x) * min(1.0, dt * 8.0)
 
         # Draw background + overlay
         try:
@@ -183,81 +203,53 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
             screen.fill((40,40,100))
         screen.blit(overlay, (0,0))
 
-        # Animación perrito
-        img_idx = (pygame.time.get_ticks() // 300) % len(pibble_imgs)
-        pibble_rect = pibble_imgs[img_idx].get_rect(bottomright=(WIDTH-30, HEIGHT-30))
-        screen.blit(pibble_imgs[img_idx], pibble_rect)
+        # Title at top center (shadow + main)
+        title_x = WIDTH//2 - title_surf.get_width()//2
+        title_y = 36
+        screen.blit(title_shadow, (title_x + 4, title_y + 4))
+        screen.blit(title_surf, (title_x, title_y))
+        # Instruction text below title (shadow + main)
+        instr_x = WIDTH//2 - instr_surf.get_width()//2
+        instr_y = title_y + title_surf.get_height() + 12
+        screen.blit(instr_shadow, (instr_x + 3, instr_y + 3))
+        screen.blit(instr_surf, (instr_x, instr_y))
 
-        mouse_pos = pygame.mouse.get_pos()
+        # Draw keys: left, center, right positions using SPACING
+        left_pos = (keys_x, keys_y)
+        center_pos = (keys_x + KEY_IMG_SIZE[0] + SPACING, keys_y)
+        right_pos = (keys_x + 2*(KEY_IMG_SIZE[0] + SPACING), keys_y)
 
-        # Dialogue box
-        pygame.draw.rect(screen, (255,255,255), text_panel_rect, border_radius=8)
-        pygame.draw.rect(screen, (0,0,0), text_panel_rect, 3, border_radius=8)
+        # Center key
+        screen.blit(key_center, center_pos)
+
+        # Left key (pressed or neutral)
+        if show_left:
+            screen.blit(key_left, left_pos)
+        else:
+            screen.blit(key_center, left_pos)
+
+        # Right key (pressed or neutral)
+        if show_right:
+            screen.blit(key_right, right_pos)
+        else:
+            screen.blit(key_center, right_pos)
+
+        # Draw bin under keys and move it
+        screen.blit(bin_img, (int(bin_x), bin_y))
 
         # Skip button
+        mouse_pos = pygame.mouse.get_pos()
         button_color = (255, 215, 0) if skip_button_rect.collidepoint(mouse_pos) else (240, 240, 240)
-        pygame.draw.rect(screen, button_color, skip_button_rect, border_radius=10)
-        pygame.draw.rect(screen, (0,0,0), skip_button_rect, 3, border_radius=10)
-        skip_font = pygame.font.SysFont(None, 32)
+        pygame.draw.rect(screen, button_color, skip_button_rect, border_radius=12)
+        pygame.draw.rect(screen, (0,0,0), skip_button_rect, 4, border_radius=12)
         skip_text = skip_font.render("SALTAR", True, (0,0,0))
         text_pos = skip_text.get_rect(center=skip_button_rect.center)
         screen.blit(skip_text, text_pos)
 
-        # If dialog valid, spawn falling objects and show keys
-        if dialog_index < len(dialogos):
-            dlg = dialogos[dialog_index]
-            # spawn falling objects probabilistic
-            if dlg["falling"] == "tronco" and random.random() < 0.02:
-                falling_group.add(FallingObject("img/tronco.png", (50, WIDTH-100), speed=300))
-            elif dlg["falling"] == "bomba" and random.random() < 0.02:
-                falling_group.add(FallingObject("img/bomba.png", (50, WIDTH-100), speed=300))
-            elif dlg["falling"] == "basura" and random.random() < 0.02:
-                basura_tipo = random.choice(["img/Cascara.png","img/Lata.png","img/botella.png"])
-                falling_group.add(FallingObject(basura_tipo, (50, WIDTH-100), speed=200))
-
-            if dlg["show_keys"]:
-                base_x = 150
-                spacing = 120
-                y_pos = HEIGHT - 310
-                for i, key_img in enumerate(teclado_imgs):
-                    screen.blit(key_img, (base_x + i*spacing, y_pos))
-
-        # letra por letra: incrementar a ritmo constante (no por frame)
-        if dialog_index < len(dialogos) and letra_index < total_chars:
-            # velocidad de caracteres por segundo
-            cps = 45  # ajustar velocidad
-            letra_index += max(1, int(cps * dt))
-            # reproducir blip por cada bloque de caracteres avanzados (simple)
-            if blip_sound:
-                blip_sound.play()
-
-        # Construir texto parcial según letra_index y lines
-        shown_lines = []
-        chars_left = letra_index
-        for line in current_lines:
-            if chars_left >= len(line):
-                shown_lines.append(line)
-                chars_left -= len(line)
-            else:
-                shown_lines.append(line[:chars_left])
-                break
-
-        # Dibujar líneas
-        y_off = 10
-        for ln in shown_lines:
-            surf = font.render(ln, True, (0,0,0))
-            screen.blit(surf, (text_panel_rect.x + 10, text_panel_rect.y + y_off))
-            y_off += surf.get_height() + 3
-
-        # ENTER text
-        screen.blit(enter_text, (text_panel_rect.right - enter_text.get_width() - 10,
-                                 text_panel_rect.bottom - enter_text.get_height() - 10))
-
-        # Update & draw falling objects
-        falling_group.update(dt)
-        falling_group.draw(screen)
+        # Small hint under keys
+        hint = small_font.render("Usa ← y → para mover el bote", True, (255,255,255))
+        screen.blit(hint, (WIDTH//2 - hint.get_width()//2, bin_y + bin_img.get_height() + 12))
 
         pygame.display.flip()
 
-    # Fin del tutorial: devolver True para que el nivel continúe
     return True
