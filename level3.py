@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import math
 from pause import mostrar_menu_pausa
 from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
 
@@ -154,6 +155,9 @@ def _load_sound(path):
 WARNING_SOUND = _load_sound("sonido/advertencia.mp3")
 LASER_SOUND = _load_sound("sonido/laser.mp3")
 
+# Cargar imagen del gato para los rayos
+GATO_IMAGE = load_image_safe("img/gato_malo.png", (150, 150))
+
 
 class Item(pygame.sprite.Sprite):
     def __init__(self, tipo, state, x, y):
@@ -257,6 +261,58 @@ def show_inspection_screen(screen, item):
     return "continuar"
 
 
+def draw_button_prompt(screen, text, x, y, key_char=None, pulse=True):
+    """Dibuja un botón destacado y atractivo para mostrar qué tecla presionar"""
+    # Efecto de pulso
+    pulse_offset = 0
+    if pulse:
+        pulse_offset = int(5 * abs(math.sin(pygame.time.get_ticks() / 200)))
+    
+    # Fondo del botón con sombra
+    button_width = 200
+    button_height = 70
+    shadow_offset = 4
+    
+    # Sombra
+    shadow_rect = pygame.Rect(x + shadow_offset, y + shadow_offset, button_width, button_height)
+    pygame.draw.rect(screen, (0, 0, 0, 100), shadow_rect, 0, 10)
+    
+    # Botón principal con gradiente
+    button_rect = pygame.Rect(x - pulse_offset//2, y - pulse_offset//2, button_width + pulse_offset, button_height + pulse_offset)
+    
+    # Gradiente del botón (de amarillo a naranja)
+    for i in range(button_rect.height):
+        color_ratio = i / button_rect.height
+        r = int(255 - color_ratio * 30)
+        g = int(200 - color_ratio * 50)
+        b = int(0)
+        pygame.draw.line(screen, (r, g, b), 
+                        (button_rect.x, button_rect.y + i), 
+                        (button_rect.x + button_rect.width, button_rect.y + i))
+    
+    # Borde del botón
+    pygame.draw.rect(screen, (255, 255, 255), button_rect, 3, 10)
+    
+    # Texto de la tecla si se proporciona
+    if key_char:
+        key_font = font_large
+        key_text = key_font.render(key_char.upper(), True, WHITE)
+        key_rect = pygame.Rect(button_rect.x + 10, button_rect.y + 5, 50, 50)
+        pygame.draw.rect(screen, (50, 50, 50), key_rect, 0, 5)
+        pygame.draw.rect(screen, WHITE, key_rect, 2, 5)
+        screen.blit(key_text, (key_rect.centerx - key_text.get_width() // 2, 
+                              key_rect.centery - key_text.get_height() // 2))
+    
+    # Texto de instrucción
+    if key_char:
+        prompt_text = font_small.render(text, True, WHITE)
+        screen.blit(prompt_text, (button_rect.x + 70, button_rect.centery - prompt_text.get_height() // 2))
+    else:
+        prompt_text = font.render(text, True, WHITE)
+        screen.blit(prompt_text, (button_rect.centerx - prompt_text.get_width() // 2, 
+                                  button_rect.centery - prompt_text.get_height() // 2))
+
+
 def run_level3(dificultad=None, idioma=None, screen=screen):
     METAS_TRITURAR = 5
     contador_triturados = 0
@@ -266,6 +322,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
     grind_start_time = 0
     is_transforming = False
     transform_start_time = 0
+    transform_key = None  # Tecla aleatoria para transformar
     item_inspected = False
     particles = []
     output_items = []
@@ -319,6 +376,26 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
     # siguiente tiempo aleatorio para la próxima advertencia
     next_warning_time = pygame.time.get_ticks() + random.randint(WARNING_MIN_INTERVAL, WARNING_MAX_INTERVAL)
 
+    # Mensajes burlones cuando el gato golpea con el láser
+    mensajes_burlones = [
+        "¡JAJAJA! ¡TE ALCANCÉ!",
+        "¡MUAHAHA! ¡ERES MUY LENTO!",
+        "¡JA JA JA! ¡NO PUEDES ESCAPAR!",
+        "¡TE DISTRAIGO! ¡JAJAJA!",
+        "¡MIRA AQUÍ! ¡TE GOLPEÉ!",
+        "¡NO PODRÁS GANAR! ¡JAJAJA!",
+        "¡ERES MUY MALO! ¡MUAHAHA!",
+        "¡INTENTA DE NUEVO! ¡JA JA JA!",
+        "¡TE ENGAÑÉ! ¡JAJAJA!",
+        "¡NO ERES RÁPIDO! ¡MUAHAHA!"
+    ]
+    
+    # Variables para mostrar mensajes burlones
+    mensaje_burlon_activo = False
+    mensaje_burlon_texto = ""
+    mensaje_burlon_start_time = 0
+    MENSAJE_BURLON_DURACION = 2000  # 2 segundos
+
     running = True
     while running:
         clock.tick(FPS)
@@ -358,10 +435,24 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                             for _ in range(30):
                                 particles.append(Particle(p_center_x + random.randint(-10, 10), p_center_y, p_color))
 
-                    elif current_item.state == 'TRIT' and not is_transforming:
-                        if current_item.rect.x >= TRANSFORM_STOP_X - 5:
+                # Detectar tecla aleatoria para transformar
+                if not juego_finalizado and current_item and current_item.state == 'TRIT' and not is_transforming:
+                    if current_item.rect.x >= TRANSFORM_STOP_X - 5 and transform_key:
+                        # Mapeo de letras a códigos de teclas de pygame
+                        key_map = {
+                            'a': pygame.K_a, 'b': pygame.K_b, 'c': pygame.K_c, 'd': pygame.K_d,
+                            'e': pygame.K_e, 'f': pygame.K_f, 'g': pygame.K_g, 'h': pygame.K_h,
+                            'i': pygame.K_i, 'j': pygame.K_j, 'k': pygame.K_k, 'l': pygame.K_l,
+                            'm': pygame.K_m, 'n': pygame.K_n, 'o': pygame.K_o, 'p': pygame.K_p,
+                            'q': pygame.K_q, 'r': pygame.K_r, 's': pygame.K_s, 't': pygame.K_t,
+                            'u': pygame.K_u, 'v': pygame.K_v, 'w': pygame.K_w, 'x': pygame.K_x,
+                            'y': pygame.K_y, 'z': pygame.K_z
+                        }
+                        # Verificar si se presionó la tecla correcta
+                        if transform_key.lower() in key_map and event.key == key_map[transform_key.lower()]:
                             is_transforming = True
                             transform_start_time = pygame.time.get_ticks()
+                            transform_key = None  # Limpiar la tecla después de usarla
 
             elif event.type == pygame.KEYUP:
                 if event.key in (pygame.K_a, pygame.K_LEFT):
@@ -384,10 +475,24 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
             warning_start_time = now
             warning_played = False
             # elegir X aleatorias y el carril (top/bottom) para cada láser
+            # Limitar las posiciones X para que solo aparezcan dentro de las transportadoras
             lasers = []
             for _ in range(num_lasers):
-                lx = random.randint(LASER_WIDTH // 2, WIDTH - LASER_WIDTH // 2)
                 track = random.choice(['top', 'bottom'])
+                if track == 'top':
+                    # Para la cinta superior: desde el inicio hasta donde termina (GRINDER_STOP_X)
+                    max_x = GRINDER_STOP_X - LASER_WIDTH // 2
+                    min_x = LASER_WIDTH // 2
+                else:
+                    # Para la cinta inferior: desde el inicio hasta donde termina (CONVEYOR_BOTTOM_WIDTH)
+                    max_x = CONVEYOR_BOTTOM_WIDTH - LASER_WIDTH // 2
+                    min_x = LASER_WIDTH // 2
+                
+                # Asegurar que min_x < max_x
+                if min_x < max_x:
+                    lx = random.randint(min_x, max_x)
+                else:
+                    lx = (min_x + max_x) // 2
                 lasers.append({'x': lx, 'track': track})
 
         # reproducir sonido de advertencia y pasar al láser tras WARNING_DURATION
@@ -417,6 +522,11 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 # limpiar posiciones y programar siguiente advertencia aleatoria
                 lasers_x = []
                 next_warning_time = pygame.time.get_ticks() + random.randint(WARNING_MIN_INTERVAL, WARNING_MAX_INTERVAL)
+        
+        # Manejar duración del mensaje burlón
+        if mensaje_burlon_activo:
+            if pygame.time.get_ticks() - mensaje_burlon_start_time >= MENSAJE_BURLON_DURACION:
+                mensaje_burlon_activo = False
 
         # (no dependemos del movimiento del jugador para los eventos de láser)
 
@@ -446,11 +556,16 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                         item.update(conveyor_dx)
                         if item.rect.x > TRANSFORM_STOP_X:
                             item.rect.x = TRANSFORM_BOX_X_CENTERED + (TRANSFORM_BOX_W // 2) - (ITEM_SIZE // 2)
+                            # Generar nueva tecla aleatoria cuando el item llega a la posición de transformación
+                            if transform_key is None:
+                                # Generar letra aleatoria (a-z)
+                                transform_key = random.choice('abcdefghijklmnopqrstuvwxyz')
                     else:
                         elapsed_time = pygame.time.get_ticks() - transform_start_time
                         if elapsed_time >= TRANSFORM_TIME:
                             is_transforming = False
                             item.transform_to_final()
+                            transform_key = None  # Limpiar la tecla después de transformar
 
                 elif item.state == 'FINAL':
                     if not item_inspected:
@@ -507,6 +622,11 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                             # si era el item actual, mantenemos la referencia para seguir moviéndolo
                             if current_item is it:
                                 current_item = it
+                            
+                            # Mostrar mensaje burlón aleatorio
+                            mensaje_burlon_activo = True
+                            mensaje_burlon_texto = random.choice(mensajes_burlones)
+                            mensaje_burlon_start_time = pygame.time.get_ticks()
 
         # DIBUJO
         if USE_BACKGROUND_IMAGE:
@@ -556,8 +676,11 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
 
         if current_item and current_item.state == 'TRIT' and current_item.rect.x >= TRANSFORM_STOP_X - 5:
             if not is_transforming:
-                text_hold = font.render("Presiona E", True, BLACK)
-                screen.blit(text_hold, (TRANSFORM_BOX_X + 20, TRANSFORM_BOX_Y + TRANSFORM_BOX_H // 2 - text_hold.get_height() // 2))
+                # Mostrar botón mejorado con la tecla aleatoria
+                if transform_key:
+                    button_x = TRANSFORM_BOX_X + (TRANSFORM_BOX_W_DRAW // 2) - 100
+                    button_y = TRANSFORM_BOX_Y + TRANSFORM_BOX_H // 2 - 35
+                    draw_button_prompt(screen, "Presiona", button_x, button_y, transform_key, pulse=True)
             else:
                 time_ratio = (pygame.time.get_ticks() - transform_start_time) / TRANSFORM_TIME
                 if time_ratio < 0.5:
@@ -582,8 +705,10 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
             if item.state == 'ORIG':
                 screen.blit(item.label_orig, (item.rect.centerx - item.label_orig.get_width() // 2, item.rect.top - item.label_orig.get_height() - 5))
                 if item.rect.right == GRINDER_STOP_X and not is_grinding:
-                    text_action = font_large.render("Presiona E para Triturar", True, YELLOW)
-                    screen.blit(text_action, (item.rect.centerx - text_action.get_width() // 2, item.rect.top - 100))
+                    # Mostrar botón mejorado para triturar
+                    button_x = item.rect.centerx - 100
+                    button_y = item.rect.top - 120
+                    draw_button_prompt(screen, "Triturar", button_x, button_y, "E", pulse=True)
             elif item.state == 'TRIT' and not is_transforming:
                 screen.blit(item.label_trit, (item.rect.centerx - item.label_trit.get_width() // 2, item.rect.top - item.label_trit.get_height() - 5))
 
@@ -603,6 +728,36 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 else:
                     ly = CONVEYOR_BOTTOM_Y - 5
                 screen.blit(laser_surf, (lx - (LASER_WIDTH // 2), ly))
+                
+                # Dibujar el gato lanzando los rayos
+                if GATO_IMAGE:
+                    # Posicionar el gato arriba del láser
+                    gato_x = lx - GATO_IMAGE.get_width() // 2
+                    if track == 'top':
+                        gato_y = CONVEYOR_TOP_Y - GATO_IMAGE.get_height() - 20
+                    else:
+                        gato_y = CONVEYOR_BOTTOM_Y - GATO_IMAGE.get_height() - 20
+                    screen.blit(GATO_IMAGE, (gato_x, gato_y))
+        
+        # Dibujar mensaje burlón si está activo
+        if mensaje_burlon_activo:
+            # Crear un fondo semitransparente para el mensaje
+            mensaje_surf = font_large.render(mensaje_burlon_texto, True, RED)
+            mensaje_rect = mensaje_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            
+            # Fondo con borde usando superficie con alpha
+            bg_rect = pygame.Rect(mensaje_rect.x - 20, mensaje_rect.y - 15, 
+                                 mensaje_rect.width + 40, mensaje_rect.height + 30)
+            bg_surf = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+            pygame.draw.rect(bg_surf, (0, 0, 0, 200), (0, 0, bg_rect.width, bg_rect.height), 0, 10)
+            pygame.draw.rect(bg_surf, (255, 0, 0, 255), (0, 0, bg_rect.width, bg_rect.height), 3, 10)
+            screen.blit(bg_surf, bg_rect)
+            
+            # Efecto de parpadeo
+            elapsed = pygame.time.get_ticks() - mensaje_burlon_start_time
+            alpha = int(255 * (0.7 + 0.3 * abs(math.sin(elapsed / 150))))
+            mensaje_surf.set_alpha(alpha)
+            screen.blit(mensaje_surf, mensaje_rect)
 
         pygame.display.flip()
 

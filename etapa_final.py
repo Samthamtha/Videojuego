@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+import math
 import pygame
 from pause import mostrar_menu_pausa
 from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
@@ -42,10 +43,11 @@ def _load_sound(path):
 
 
 class EtapaFinal:
-	def __init__(self, screen):
+	def __init__(self, screen, dificultad=None):
 		self.screen = screen
 		self.clock = pygame.time.Clock()
 		self.fps = FPS
+		self.dificultad = dificultad
 
 		# Assets
 		self.bg = load_image_safe(os.path.join(ASSET_DIR, 'fondo_final.jpg'), (WIDTH, HEIGHT), (18,18,28))
@@ -132,8 +134,16 @@ class EtapaFinal:
 		self.WARNING_DURATION = 700
 		self.LASER_DURATION = 700
 		self.LASER_WIDTH = 96
-		self.LASER_DAMAGE = 1
+		# Ajustar daño según dificultad (2 vidas en principiante, 2 en otras)
+		if dificultad and 'principiante' in str(dificultad).lower():
+			self.LASER_DAMAGE = 2
+		else:
+			self.LASER_DAMAGE = 2
 		self.SCRATCH_DAMAGE = 0
+		
+		# Tutorial
+		self.tutorial_completado = False
+		self.tutorial_start_time = 0
 
 		self.next_warning_time = pygame.time.get_ticks() + random.randint(self.WARNING_MIN, self.WARNING_MAX)
 		self.warning_active = False
@@ -144,10 +154,17 @@ class EtapaFinal:
 		# UI fonts
 		self.font = pygame.font.SysFont(None, 28)
 		self.font_large = pygame.font.SysFont(None, 44)
+		self.font_tutorial = pygame.font.SysFont(None, 36)
 
 		# Input flags
 		self.moving_left = False
 		self.moving_right = False
+		
+		# Efecto de golpe mejorado
+		self.hit_effect_active = False
+		self.hit_effect_start = 0
+		self.hit_effect_duration = 300
+		self.hit_particles = []
 
 		self.running = True
 
@@ -178,6 +195,11 @@ class EtapaFinal:
 			if event.type == pygame.QUIT:
 				pygame.quit(); sys.exit()
 			if event.type == pygame.KEYDOWN:
+				# Cerrar tutorial con cualquier tecla
+				if not self.tutorial_completado:
+					self.tutorial_completado = True
+					continue
+					
 				if event.key == pygame.K_ESCAPE:
 					# Open pause menu and react to its selection
 					try:
@@ -209,6 +231,10 @@ class EtapaFinal:
 		return None
 
 	def update(self):
+		# Pausar el juego si el tutorial está activo
+		if not self.tutorial_completado:
+			return
+			
 		dt = self.clock.tick(self.fps)
 		now = pygame.time.get_ticks()
 
@@ -302,9 +328,40 @@ class EtapaFinal:
 				if abs(self.player_pos.x - self.gato_pos.x) <= self.attack_range:
 					self.gato_hp = max(0, self.gato_hp - 3)
 					self.gato_hit_timer = now
+					# Activar efecto de golpe mejorado
+					self.hit_effect_active = True
+					self.hit_effect_start = now
+					# Crear partículas de impacto
+					for _ in range(15):
+						angle = random.uniform(0, 360)
+						speed = random.uniform(2, 6)
+						self.hit_particles.append({
+							'pos': pygame.Vector2(self.gato_pos.x, self.gato_pos.y),
+							'vel': pygame.Vector2(math.cos(math.radians(angle)) * speed, 
+												math.sin(math.radians(angle)) * speed),
+							'size': random.randint(4, 10),
+							'color': (255, 200, 0),
+							'life': random.randint(200, 400)
+						})
 				self.attack_hit_applied = True
 			if elapsed >= self.ATTACK_ANIM_DURATION:
 				self.attacking = False
+		
+		# Actualizar efecto de golpe
+		if self.hit_effect_active:
+			if now - self.hit_effect_start >= self.hit_effect_duration:
+				self.hit_effect_active = False
+				self.hit_particles = []
+			else:
+				# Actualizar partículas
+				alive_particles = []
+				for p in self.hit_particles:
+					p['pos'] += p['vel']
+					p['vel'] *= 0.95  # Fricción
+					p['life'] -= dt
+					if p['life'] > 0:
+						alive_particles.append(p)
+				self.hit_particles = alive_particles
 
 		# Death sequence trigger
 		if self.gato_hp <= 0 and not self.gato_dead:
@@ -334,8 +391,10 @@ class EtapaFinal:
 						alive.append(p)
 				self.confetti = alive
 
-			# after confetti duration, show victory menu once
+			# after confetti duration, show victory message and menu once
 			if death_elapsed >= self.DEATH_SHAKE_DURATION + self.CONFETTI_DURATION and self.post_death_action is None:
+				# Mostrar mensaje personalizado de victoria
+				self.show_victory_message()
 				try:
 					self.post_death_action = mostrar_menu_victoria(self.screen, 'level_final')
 				except Exception:
@@ -374,15 +433,26 @@ class EtapaFinal:
 		else:
 			self.screen.blit(pf, pr)
 
-		# Attack effect
+		# Attack effect mejorado
 		if self.attacking:
 			facing = 1 if self.player_pos.x < self.gato_pos.x else -1
-			slash_w, slash_h = 64, 28
+			slash_w, slash_h = 80, 35
 			slash = pygame.Surface((slash_w, slash_h), pygame.SRCALPHA)
-			pygame.draw.ellipse(slash, (255,200,60,200), (0,0,slash_w,slash_h))
-			sx = int(self.player_pos.x + facing*28 - slash_w//2); sy = int(self.player_pos.y - 10)
+			# Efecto de golpe más visible con gradiente
+			for i in range(slash_h):
+				alpha = int(255 * (1 - i / slash_h))
+				pygame.draw.line(slash, (255, 255, 100, alpha), (0, i), (slash_w, i))
+			pygame.draw.ellipse(slash, (255, 200, 60, 220), (0, 0, slash_w, slash_h))
+			sx = int(self.player_pos.x + facing*35 - slash_w//2); sy = int(self.player_pos.y - 15)
 			if facing == -1: slash = pygame.transform.flip(slash, True, False)
 			self.screen.blit(slash, (sx, sy))
+		
+		# Dibujar partículas de impacto
+		for p in self.hit_particles:
+			alpha = int(255 * (p['life'] / 400))
+			particle_surf = pygame.Surface((p['size'], p['size']), pygame.SRCALPHA)
+			pygame.draw.circle(particle_surf, (*p['color'], alpha), (p['size']//2, p['size']//2), p['size']//2)
+			self.screen.blit(particle_surf, (int(p['pos'].x - p['size']//2), int(p['pos'].y - p['size']//2)))
 
 		# Boss (possibly red when hit) / Death shake and disappearance
 		gf = self.gato_frames[self.gato_frame]
@@ -464,7 +534,125 @@ class EtapaFinal:
 				color = (220,40,40) if i < self.player_hp else (80,80,80)
 				pygame.draw.polygon(self.screen, color, [(x+6, sy+14),(x+14, sy+26),(x+22, sy+14),(x+14,sy+6)])
 
+		# Mostrar tutorial si no está completado
+		if not self.tutorial_completado:
+			self.draw_tutorial()
+		
 		pygame.display.flip()
+
+	def show_victory_message(self):
+		"""Muestra un mensaje personalizado de victoria"""
+		# Fondo semitransparente
+		overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+		overlay.fill((0, 0, 0, 200))
+		self.screen.blit(overlay, (0, 0))
+		
+		# Panel del mensaje
+		panel_w = 900
+		panel_h = 300
+		panel_x = WIDTH // 2 - panel_w // 2
+		panel_y = HEIGHT // 2 - panel_h // 2
+		
+		# Fondo del panel
+		panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+		panel.fill((30, 40, 30, 240))
+		pygame.draw.rect(panel, (100, 255, 100, 255), panel.get_rect(), 4, border_radius=15)
+		self.screen.blit(panel, (panel_x, panel_y))
+		
+		# Mensaje de victoria
+		mensaje = "¡Felicidades! Has logrado vencer tu némesis."
+		mensaje2 = "Recuerda cuidar el planeta. ¡Suerte!"
+		
+		# Título
+		title = self.font_large.render("¡VICTORIA!", True, (100, 255, 100))
+		self.screen.blit(title, (panel_x + panel_w // 2 - title.get_width() // 2, panel_y + 30))
+		
+		# Mensaje principal
+		text1 = self.font_tutorial.render(mensaje, True, (255, 255, 255))
+		self.screen.blit(text1, (panel_x + panel_w // 2 - text1.get_width() // 2, panel_y + 100))
+		
+		text2 = self.font_tutorial.render(mensaje2, True, (255, 255, 255))
+		self.screen.blit(text2, (panel_x + panel_w // 2 - text2.get_width() // 2, panel_y + 150))
+		
+		# Instrucción para continuar
+		continuar = self.font.render("Presiona cualquier tecla para continuar...", True, (200, 255, 200))
+		self.screen.blit(continuar, (panel_x + panel_w // 2 - continuar.get_width() // 2, panel_y + 220))
+		
+		pygame.display.flip()
+		
+		# Esperar a que el usuario presione una tecla
+		waiting = True
+		while waiting:
+			for event in pygame.event.get():
+				if event.type == pygame.QUIT:
+					pygame.quit()
+					sys.exit()
+				if event.type == pygame.KEYDOWN:
+					waiting = False
+	
+	def draw_tutorial(self):
+		"""Dibuja el tutorial inicial"""
+		# Fondo semitransparente
+		overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+		overlay.fill((0, 0, 0, 200))
+		self.screen.blit(overlay, (0, 0))
+		
+		# Panel del tutorial
+		panel_w = 800
+		panel_h = 500
+		panel_x = WIDTH // 2 - panel_w // 2
+		panel_y = HEIGHT // 2 - panel_h // 2
+		
+		# Fondo del panel
+		panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+		panel.fill((30, 30, 40, 240))
+		pygame.draw.rect(panel, (255, 255, 255, 255), panel.get_rect(), 4, border_radius=15)
+		self.screen.blit(panel, (panel_x, panel_y))
+		
+		# Título
+		title = self.font_large.render("TUTORIAL - COMBATE FINAL", True, (255, 220, 100))
+		self.screen.blit(title, (panel_x + panel_w // 2 - title.get_width() // 2, panel_y + 30))
+		
+		# Instrucciones
+		y_offset = 100
+		line_height = 50
+		
+		instrucciones = [
+			"MOVIMIENTO:",
+			"  A / ← : Mover a la izquierda",
+			"  D / → : Mover a la derecha",
+			"  W / ↑ / Espacio : Saltar",
+			"",
+			"ATAQUE:",
+			"  Enter : Atacar al gato (debes estar cerca)",
+			"",
+			"ADVERTENCIAS:",
+			"  ⚠️ Evita los láseres rojos del gato",
+			"  ⚠️ Los láseres quitan 2 vidas",
+			"  ⚠️ Mantente en movimiento para esquivar",
+			"",
+			"Presiona cualquier tecla para comenzar..."
+		]
+		
+		for i, texto in enumerate(instrucciones):
+			if texto.startswith("  "):
+				color = (200, 200, 200)
+				font_inst = self.font
+			elif texto.endswith(":"):
+				color = (255, 200, 100)
+				font_inst = self.font_tutorial
+			elif texto.startswith("⚠️"):
+				color = (255, 100, 100)
+				font_inst = self.font
+			elif "Presiona" in texto:
+				color = (100, 255, 100)
+				font_inst = self.font_tutorial
+			else:
+				color = (255, 255, 255)
+				font_inst = self.font
+			
+			text_surf = font_inst.render(texto, True, color)
+			self.screen.blit(text_surf, (panel_x + 40, panel_y + y_offset + i * line_height))
 
 	def run(self):
 		while self.running:
@@ -501,7 +689,7 @@ def run_etapa_final(dificultad=None, idioma=None, screen=None):
 			pass
 
 	try:
-		etapa = EtapaFinal(screen)
+		etapa = EtapaFinal(screen, dificultad)
 	except Exception:
 		import traceback
 		traceback.print_exc()
