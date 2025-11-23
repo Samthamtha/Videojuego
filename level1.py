@@ -426,6 +426,33 @@ def run_level1(dificultad, idioma, screen):
         screen.blit(fondo, (0, 0))
         screen.blit(cat_thrower.image, cat_thrower.rect)
         trashes.draw(screen)
+        # Dibujar contorno ajustado a la forma (más preciso) usando la máscara del sprite
+        # Colores por tipo: orgánica=verde, reciclable=azul, inorgánico=rojo
+        outline_colors = {'organica': DARK_GREEN, 'reciclable': DARK_BLUE, 'inorganico': DARK_RED}
+        for trash in trashes:
+            try:
+                if getattr(trash, 'es_peligro', False):
+                    # No outline for peligros (opcional)
+                    continue
+                col = outline_colors.get(getattr(trash, 'tipo', None), BLACK)
+                img = getattr(trash, 'image', None)
+                if img is None:
+                    continue
+                # Create a mask from the sprite surface and get an outline of non-transparent pixels
+                mask = pygame.mask.from_surface(img)
+                outline = mask.outline()
+                if outline and len(outline) >= 3:
+                    pts = [(trash.rect.left + x, trash.rect.top + y) for (x, y) in outline]
+                    # Draw the polygon outline; use width 3 for visibility
+                    pygame.draw.polygon(screen, col, pts, 3)
+                else:
+                    # Fallback: small rounded rect if outline is not available
+                    rect = trash.rect.inflate(6, 6)
+                    radius = max(0, min(8, rect.width // 8))
+                    pygame.draw.rect(screen, col, rect, 3, border_radius=radius)
+            except Exception:
+                # Ignore drawing errors to avoid crashing runtime
+                pass
         player.draw(screen)
 
         # ===============================
