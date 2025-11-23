@@ -25,7 +25,7 @@ El objetivo es concienciar sobre la gestión de residuos y el consumo responsabl
 
 El juego se compone de tres minijuegos principales, cada uno enfocado en una "R" diferente.
 
-### Etapa 1: ¡El Río Contaminado! (Reducir / Reciclar / )
+### Etapa 1: ¡El Río Contaminado! (Reducir / Reciclar)
 
 En este nivel, el jugador debe limpiar un río clasificando la basura que cae.
 
@@ -37,7 +37,7 @@ En este nivel, el jugador debe limpiar un río clasificando la basura que cae.
     * **¡Giro clave!** Cuando un bote de basura se completa (alcanza su meta), se bloquea, deja de moverse y ya no suma más puntos. Esto incrementa el desafío al forzar al jugador a gestionar los contenedores restantes.
 * **Esenario para la etapa 1:**
 
-![Texto alternativo](img/rio.png)
+<img width="1916" height="963" alt="Captura de pantalla 2025-11-23 174418" src="https://github.com/user-attachments/assets/e96d7739-5643-4bfb-9e39-65f5008269d7" />
 
 ### Etapa 2: El Taller de Reparaciones (Reparar / Renovar / Recuperar))
 
@@ -46,17 +46,32 @@ Este nivel se enfoca en la importancia de reparar objetos en lugar de desecharlo
 * **Mecánica:** Aparece un objeto roto en el centro de la pantalla.
 * **Objetivo:** A un lado, el jugador tiene un panel con las herramientas necesarias (martillo, destornillador, pegamento, etc.). Debe seleccionar la herramienta correcta y aplicarla en la zona dañada.
 * **Desafío:** Un **"enemigo distractor"** aparecerá en pantalla para interrumpir al jugador y evitar que complete su tarea a tiempo (ej. tapando la visión(principiante y intermedio), invirtiendo los controles del juego(nivel profecional)).
-* * **Esenario para la etapa 1:**
+* * **Esenario para la etapa 2:**
 
-![Imagen de WhatsApp 2025-11-13 a las 21 37 58_cb72fc8f](https://github.com/user-attachments/assets/dbd06f9a-6dae-4463-9057-6dd546a4f958)
+<img width="1896" height="947" alt="Captura de pantalla 2025-11-23 174603" src="https://github.com/user-attachments/assets/76330cb4-e3fa-4f66-85c2-6bf5fee27802" />
 
 ### Etapa 3: La Cinta Transformadora (Reutilizar / Rediseñar)
+
+El nivel 3 enseña cómo los objetos "viejos" pueden tener una nueva vida y propósito.
+
+* **Mecánica:** Es un nivel de ritmo (Quick Time Event - QTE). Una cinta transportadora mueve diferentes objetos (botella de plastico, periodico, lata de aluminio).
+* **Objetivo:** Los objetos pasan por un lugar determinado ("zona de transformación") siendo el jugador el que mueve el objeto.
+* **Acción:** Justo en ese momento, una tecla aleatoria aparece en pantalla. El jugador debe presionar la tecla indicada en el instante preciso para **transformar el objeto** en algo nuevo y útil.
+* **Desafio:** El enemigo sera el gato queriendo evitar tu avance volando en los aires y lanzando rayos para que te atrase y si te acerta se burla de ti, cada dificultad aumenta la velocidad de aparicion y en el profecional seran 3. 
+* * **Esenario para la etapa 3:**
+
+<img width="1819" height="856" alt="image" src="https://github.com/user-attachments/assets/3906d626-b9ac-47e9-95d0-53d9695510d7" />
+
+### Etapa FINAL: La Cinta Transformadora (Reutilizar / Rediseñar)
 
 El nivel final enseña cómo los objetos "viejos" pueden tener una nueva vida y propósito.
 
 * **Mecánica:** Es un nivel de ritmo (Quick Time Event - QTE). Una cinta transportadora mueve diferentes objetos (botella de plastico, periodico, lata de aluminio).
 * **Objetivo:** Los objetos pasan por un lugar determinado ("zona de transformación").
-* **Acción:** Justo en ese momento, una tecla aleatoria aparece en pantalla. El jugador debe presionar la tecla indicada en el instante preciso para **transformar el objeto** en algo nuevo y útil.
+* **Acción:** Justo en ese momento, una tecla aleatoria aparece en pantalla. El jugador debe presionar la tecla indicada en el instante preciso para transformar el objeto en algo nuevo y útil.
+* * **Esenario para la etapa 3:**
+
+<img width="1919" height="954" alt="image" src="https://github.com/user-attachments/assets/26dd74ce-dee0-43b9-9513-c462840057a9" />
 
 ---
 
