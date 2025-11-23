@@ -7,6 +7,7 @@ from level_select import run_level_select
 from level1 import run_level1
 from level2 import run_level2
 from level3 import run_level3
+from etapa_final import run_etapa_final
 
 # CONSTANTES DE MÚSICA - AJUSTA ESTAS RUTAS
 MENU_MUSIC = 'sonido/inicio_musica.mp3'
@@ -19,6 +20,7 @@ LEVEL_MAP = {
     "level1": {"music": LEVEL1_MUSIC, "function": run_level1, "next": "level2"},
     "level2": {"music": LEVEL2_MUSIC, "function": run_level2, "next": "level3"},
     "level3": {"music": LEVEL3_MUSIC, "function": run_level3, "next": "menu"},
+    "level_final": {"music": 'sonido/final.mp3', "function": run_etapa_final, "next": "menu"},
 }
 
 
@@ -78,6 +80,17 @@ def main():
 
                 # Ejecutar nivel actual
                 play_music(LEVEL_MAP[nivel]["music"])
+                # Limpiar eventos residuales antes de arrancar el nivel
+                try:
+                    pygame.event.clear()
+                except Exception:
+                    pass
+                # Forzar un repintado rápido del screen para evitar restos de overlays
+                try:
+                    screen.fill((0, 0, 0))
+                    pygame.display.flip()
+                except Exception:
+                    pass
                 accion_nivel = LEVEL_MAP[nivel]["function"](dificultad, idioma, screen)
 
                 # --- Lógica según resultado del nivel ---
