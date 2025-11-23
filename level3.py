@@ -1,4 +1,3 @@
-# level3.py
 import pygame
 import sys
 import random
@@ -21,7 +20,8 @@ except Exception as e:
     print(f"Advertencia: No se pudo cargar la imagen de fondo: {e}")
     USE_BACKGROUND_IMAGE = False
 
-# COLORES Y FUENTES 
+
+# COLORES Y FUENTES
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 DARK_GRAY = (50, 50, 50)
@@ -61,6 +61,7 @@ OUTPUT_ITEM_STACK_OFFSET = 20
 TRANSFORM_BOX_X_CENTERED = WIDTH // 2 - 50
 TRANSFORM_BOX_W = CONVEYOR_HEIGHT + 20
 
+
 # CLASE Particle
 class Particle:
     def __init__(self, x, y, color):
@@ -83,64 +84,77 @@ class Particle:
         if self.lifetime > 0:
             pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.size)
 
+
 # RUTAS DE IMAGENES SEGÚN TUS ARCHIVOS
 FILE_MAP = {
     'BOTELLA PET': {
         'orig': "img/botella.png",
         'trit': "img/botella_triturada.png",
-        'final': "img/bloques.png"   # ladrillos (LADRILLOS_DE_JUGUETE)
+        'final': "img/bloques.png"
     },
     'LATA ALUMINIO': {
         'orig': "img/Lata.png",
         'trit': "img/lata_triturada.png",
-        'final': "img/Sarten.png"    # sartén reciclada
+        'final': "img/Sarten.png"
     },
     'PERIODICO': {
         'orig': "img/periodico.png",
         'trit': "img/periodico_triturado.png",
-        'final': "img/Cascara_huevo.png"   # usa Cascara.png según tu lista (cámbialo si quieres otro)
+        'final': "img/Cascara_huevo.png"
     }
 }
 
-# Datos de transformación (texto / metadatos)
 TRANSFORM_DATA = {
-    'BOTELLA PET': { 'color_orig': BLUE_ORIG, 'shape_orig': 'rect', 'color_trit': RED_TRIT, 'shape_trit': 'circle', 'nombre_final': "LADRILLOS DE JUGUETE", 'color_final': GREEN_FINAL },
-    'LATA ALUMINIO': { 'color_orig': (200, 200, 200), 'shape_orig': 'circle', 'color_trit': (100, 100, 100), 'shape_trit': 'rect', 'nombre_final': "SARTÉN RECICLADA", 'color_final': (255, 140, 0) },
-    'PERIODICO': { 'color_orig': (150, 120, 100), 'shape_orig': 'rect', 'color_trit': (50, 50, 50), 'shape_trit': 'rect', 'nombre_final': "CAJAS DE HUEVO", 'color_final': (180, 180, 100) }
+    'BOTELLA PET': {'color_orig': BLUE_ORIG, 'shape_orig': 'rect', 'color_trit': RED_TRIT, 'shape_trit': 'circle', 'nombre_final': "LADRILLOS DE JUGUETE", 'color_final': GREEN_FINAL},
+    'LATA ALUMINIO': {'color_orig': (200, 200, 200), 'shape_orig': 'circle', 'color_trit': (100, 100, 100), 'shape_trit': 'rect', 'nombre_final': "SARTÉN RECICLADA", 'color_final': (255, 140, 0)},
+    'PERIODICO': {'color_orig': (150, 120, 100), 'shape_orig': 'rect', 'color_trit': (50, 50, 50), 'shape_trit': 'rect', 'nombre_final': "CAJAS DE HUEVO", 'color_final': (180, 180, 100)}
 }
 TRANSFORM_TYPES = list(TRANSFORM_DATA.keys())
 
-# FUNCION AUXILIAR PARA CARGAR UNA IMAGEN CON FALLBACK
-def load_image_safe(path, size=None, fallback_color=(180,180,180)):
+
+def load_image_safe(path, size=None, fallback_color=(180, 180, 180)):
     try:
         img = pygame.image.load(path).convert_alpha()
         if size:
             img = pygame.transform.scale(img, size)
         return img
-    except Exception as e:
-        # fallback: surface con color y etiqueta pequeña
+    except Exception:
         w, h = size if size else (ITEM_SIZE, ITEM_SIZE)
-        s = pygame.Surface((w,h), pygame.SRCALPHA)
+        s = pygame.Surface((w, h), pygame.SRCALPHA)
         s.fill(fallback_color)
         try:
-            # escribe el nombre de archivo corto si cabe
             smallf = pygame.font.SysFont(None, 16)
-            label = smallf.render(path.split('/')[-1], True, (0,0,0))
-            s.blit(label, (4,4))
+            label = smallf.render(path.split('/')[-1], True, (0, 0, 0))
+            s.blit(label, (4, 4))
         except Exception:
             pass
         return s
 
-# CARGA DE IMÁGENES REALES (original, triturada y finales)
+
 IMAGES = {}
 for tipo in TRANSFORM_TYPES:
     fm = FILE_MAP.get(tipo, {})
     IMAGES[tipo] = load_image_safe(fm.get('orig', ''), (ITEM_SIZE, ITEM_SIZE))
     IMAGES[tipo + '_TRIT'] = load_image_safe(fm.get('trit', ''), (ITEM_SIZE, ITEM_SIZE))
-    IMAGES[tipo + '_FINAL_GRANDE'] = load_image_safe(fm.get('final', ''), (ITEM_SIZE*2, ITEM_SIZE*2))
+    IMAGES[tipo + '_FINAL_GRANDE'] = load_image_safe(fm.get('final', ''), (ITEM_SIZE * 2, ITEM_SIZE * 2))
     IMAGES[tipo + '_FINAL_PEQUE'] = load_image_safe(fm.get('final', ''), (ITEM_SIZE, ITEM_SIZE))
 
-# CLASES Item y ConveyorBelt 
+# CARGAR SONIDOS (si existen)
+try:
+    pygame.mixer.init()
+except Exception:
+    pass
+
+def _load_sound(path):
+    try:
+        return pygame.mixer.Sound(path)
+    except Exception:
+        return None
+
+WARNING_SOUND = _load_sound("sonido/advertencia.mp3")
+LASER_SOUND = _load_sound("sonido/laser.mp3")
+
+
 class Item(pygame.sprite.Sprite):
     def __init__(self, tipo, state, x, y):
         super().__init__()
@@ -154,41 +168,38 @@ class Item(pygame.sprite.Sprite):
         self.update_image()
 
     def update_image(self):
-        # Usa las imágenes cargadas desde IMAGES (archivos reales o fallback)
         if self.state == 'ORIG':
-            self.image = IMAGES.get(self.tipo, IMAGES.get(self.tipo + '_TRIT', pygame.Surface((ITEM_SIZE,ITEM_SIZE))))
+            self.image = IMAGES.get(self.tipo, IMAGES.get(self.tipo + '_TRIT', pygame.Surface((ITEM_SIZE, ITEM_SIZE))))
         elif self.state == 'TRIT':
-            self.image = IMAGES.get(self.tipo + '_TRIT', IMAGES.get(self.tipo, pygame.Surface((ITEM_SIZE,ITEM_SIZE))))
+            self.image = IMAGES.get(self.tipo + '_TRIT', IMAGES.get(self.tipo, pygame.Surface((ITEM_SIZE, ITEM_SIZE))))
         elif self.state == 'FINAL':
-            self.image = IMAGES.get(self.tipo + '_FINAL_PEQUE', IMAGES.get(self.tipo, pygame.Surface((ITEM_SIZE,ITEM_SIZE))))
+            self.image = IMAGES.get(self.tipo + '_FINAL_PEQUE', IMAGES.get(self.tipo, pygame.Surface((ITEM_SIZE, ITEM_SIZE))))
         else:
             self.image = pygame.Surface((ITEM_SIZE, ITEM_SIZE))
         self.rect.size = self.image.get_size()
 
-    def update(self, direction='right'):
+    def update(self, conveyor_dx=0):
         if self.state != 'OUTPUT':
-            if self.state in ['ORIG', 'FINAL']:
-                self.rect.x += self.speed
+            if self.state in ['ORIG', 'FINAL', 'TRIT']:
+                self.rect.x += conveyor_dx
             if self.state == 'ORIG':
                 self.rect.y = CONVEYOR_TOP_Y + (CONVEYOR_HEIGHT - ITEM_SIZE) // 2
             elif self.state == 'FINAL':
                 self.rect.y = CONVEYOR_BOTTOM_Y + (CONVEYOR_HEIGHT - ITEM_SIZE) // 2
             elif self.state == 'TRIT':
-                self.rect.x += self.speed
                 TRANSFORM_BOX_Y = CONVEYOR_BOTTOM_Y - 10
                 TRANSFORM_BOX_H = CONVEYOR_HEIGHT + 20
                 self.rect.y = TRANSFORM_BOX_Y + (TRANSFORM_BOX_H - ITEM_SIZE) // 2
 
     def triturar(self):
         self.state = 'TRIT'
-        # actualiza imagen y lo posiciona para el trayecto hacia transform
         self.update_image()
-        # empuja fuera de la vista para que la animación funcione (como antes)
         self.rect.x = -ITEM_SIZE * 2
 
     def transform_to_final(self):
         self.state = 'FINAL'
         self.update_image()
+
 
 class ConveyorBelt:
     def __init__(self, y, width):
@@ -205,7 +216,7 @@ class ConveyorBelt:
             x = (i + (pygame.time.get_ticks() // 20 % 30)) % self.width
             pygame.draw.line(surface, line_color, (x, self.y + 5), (x, self.y + self.height - 5), 2)
 
-# Función de Inspección y Mensaje
+
 def show_inspection_screen(screen, item):
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
@@ -220,7 +231,6 @@ def show_inspection_screen(screen, item):
     text_title = font_large.render("¡OBJETO REVALORIZADO!", True, BLACK)
     screen.blit(text_title, (box_rect.centerx - text_title.get_width() // 2, box_rect.y + 30))
 
-    # imagen final grande: si falta, IMAGES contiene fallback
     img_final_grande = IMAGES.get(item.tipo + '_FINAL_GRANDE')
     if img_final_grande:
         img_rect = img_final_grande.get_rect(center=(box_rect.centerx, box_rect.y + 150))
@@ -246,7 +256,7 @@ def show_inspection_screen(screen, item):
                 return "salir_menu"
     return "continuar"
 
-# Función Principal del Nivel 3
+
 def run_level3(dificultad=None, idioma=None, screen=screen):
     METAS_TRITURAR = 5
     contador_triturados = 0
@@ -265,6 +275,50 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
     spawn_rate = 180
     spawn_timer = 0
 
+    # Controles de cinta: banderas para manejar teclas mantenidas
+    moving_left = False
+    moving_right = False
+    conveyor_dx = 0
+    # Variables para advertencia y láser (aleatorio, independiente del jugador)
+    warning_active = False
+    warning_start_time = 0
+    warning_played = False
+
+    laser_active = False
+    laser_start_time = 0
+    laser_played = False
+    # lista de láseres activos; cada uno es dict {'x': int, 'track': 'top'|'bottom'}
+    lasers = []
+    LASER_WIDTH = 18
+
+    # Ajustes según dificultad
+    # valores por defecto (Principiante) - aumentado la frecuencia
+    num_lasers = 1
+    WARNING_MIN_INTERVAL = 2000
+    WARNING_MAX_INTERVAL = 5000
+    WARNING_DURATION = 1000
+    LASER_DURATION = 350
+
+    if dificultad:
+        dif = str(dificultad).lower()
+        if 'inter' in dif:  # Intermedio - más frecuente
+            num_lasers = 2
+            WARNING_MIN_INTERVAL = 1200
+            WARNING_MAX_INTERVAL = 2800
+            WARNING_DURATION = 700
+            LASER_DURATION = 260
+            LASER_WIDTH = 16
+        elif 'prof' in dif or 'profe' in dif or 'profesional' in dif:  # Profesional - más frecuente aún
+            num_lasers = 3
+            WARNING_MIN_INTERVAL = 700
+            WARNING_MAX_INTERVAL = 1600
+            WARNING_DURATION = 500
+            LASER_DURATION = 220
+            LASER_WIDTH = 12
+
+    # siguiente tiempo aleatorio para la próxima advertencia
+    next_warning_time = pygame.time.get_ticks() + random.randint(WARNING_MIN_INTERVAL, WARNING_MAX_INTERVAL)
+
     running = True
     while running:
         clock.tick(FPS)
@@ -277,6 +331,11 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 return "salir_juego"
 
             elif event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_a, pygame.K_LEFT):
+                    moving_left = True
+                if event.key in (pygame.K_d, pygame.K_RIGHT):
+                    moving_right = True
+
                 if event.key == pygame.K_ESCAPE:
                     pygame.event.clear()
                     accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
@@ -293,7 +352,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                             is_grinding = True
                             grind_start_time = pygame.time.get_ticks()
                             current_item.rect.x = -5000
-                            p_color = current_item.data.get('color_orig', (255,255,255))
+                            p_color = current_item.data.get('color_orig', (255, 255, 255))
                             p_center_x = GRINDER_X + (GRINDER_WIDTH // 3)
                             p_center_y = CONVEYOR_TOP_Y + CONVEYOR_HEIGHT // 2
                             for _ in range(30):
@@ -303,6 +362,63 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                         if current_item.rect.x >= TRANSFORM_STOP_X - 5:
                             is_transforming = True
                             transform_start_time = pygame.time.get_ticks()
+
+            elif event.type == pygame.KEYUP:
+                if event.key in (pygame.K_a, pygame.K_LEFT):
+                    moving_left = False
+                if event.key in (pygame.K_d, pygame.K_RIGHT):
+                    moving_right = False
+
+        # calcular desplazamiento horizontal de la cinta según las banderas
+        if moving_left and not moving_right:
+            conveyor_dx = -CONVEYOR_SPEED
+        elif moving_right and not moving_left:
+            conveyor_dx = CONVEYOR_SPEED
+        else:
+            conveyor_dx = 0
+
+        # Secuencia de advertencia/láser aleatoria (independiente del jugador)
+        now = pygame.time.get_ticks()
+        if not warning_active and not laser_active and now >= next_warning_time:
+            warning_active = True
+            warning_start_time = now
+            warning_played = False
+            # elegir X aleatorias y el carril (top/bottom) para cada láser
+            lasers = []
+            for _ in range(num_lasers):
+                lx = random.randint(LASER_WIDTH // 2, WIDTH - LASER_WIDTH // 2)
+                track = random.choice(['top', 'bottom'])
+                lasers.append({'x': lx, 'track': track})
+
+        # reproducir sonido de advertencia y pasar al láser tras WARNING_DURATION
+        if warning_active:
+            if not warning_played and WARNING_SOUND:
+                try:
+                    WARNING_SOUND.play()
+                except Exception:
+                    pass
+                warning_played = True
+            if pygame.time.get_ticks() - warning_start_time >= WARNING_DURATION:
+                warning_active = False
+                laser_active = True
+                laser_start_time = pygame.time.get_ticks()
+                laser_played = False
+
+        # manejar láser: reproducir sonido y marcar duración
+        if laser_active:
+            if not laser_played and LASER_SOUND:
+                try:
+                    LASER_SOUND.play()
+                except Exception:
+                    pass
+                laser_played = True
+            if pygame.time.get_ticks() - laser_start_time >= LASER_DURATION:
+                laser_active = False
+                # limpiar posiciones y programar siguiente advertencia aleatoria
+                lasers_x = []
+                next_warning_time = pygame.time.get_ticks() + random.randint(WARNING_MIN_INTERVAL, WARNING_MAX_INTERVAL)
+
+        # (no dependemos del movimiento del jugador para los eventos de láser)
 
         if not juego_finalizado:
             if not current_item and not is_grinding and not is_transforming and spawn_timer >= spawn_rate:
@@ -318,20 +434,19 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
             for item in list(all_items):
                 if item.state == 'ORIG':
                     if not is_grinding:
-                        if item.rect.right < GRINDER_STOP_X:
-                            item.update()
-                        else:
+                        # aplicar movimiento siempre y luego clampear a la derecha si corresponde
+                        item.update(conveyor_dx)
+                        if item.rect.right > GRINDER_STOP_X:
                             item.rect.right = GRINDER_STOP_X
-                    # keep current_item reference consistent
                     if current_item is None:
                         current_item = item
+
                 elif item.state == 'TRIT':
                     if not is_transforming:
-                        if item.rect.x < TRANSFORM_STOP_X:
-                            item.update()
-                        else:
+                        item.update(conveyor_dx)
+                        if item.rect.x > TRANSFORM_STOP_X:
                             item.rect.x = TRANSFORM_BOX_X_CENTERED + (TRANSFORM_BOX_W // 2) - (ITEM_SIZE // 2)
-                    elif is_transforming:
+                    else:
                         elapsed_time = pygame.time.get_ticks() - transform_start_time
                         if elapsed_time >= TRANSFORM_TIME:
                             is_transforming = False
@@ -339,7 +454,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
 
                 elif item.state == 'FINAL':
                     if not item_inspected:
-                        item.update()
+                        item.update(conveyor_dx)
                         if item.rect.right >= CONVEYOR_BOTTOM_WIDTH:
                             item.rect.right = CONVEYOR_BOTTOM_WIDTH
                             item_inspected = True
@@ -356,6 +471,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                                 return "salir_juego"
                             elif accion == "salir_menu":
                                 return "salir_menu"
+
                 elif item.state == 'OUTPUT':
                     pass
 
@@ -363,7 +479,6 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 elapsed_time = pygame.time.get_ticks() - grind_start_time
                 if elapsed_time >= GRIND_TIME:
                     is_grinding = False
-                    # seguridad: si current_item existe, triturar
                     if current_item:
                         current_item.triturar()
                         contador_triturados += 1
@@ -371,6 +486,27 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
             particles = [p for p in particles if p.lifetime > 0]
             for p in particles:
                 p.update()
+
+            # --- si el láser está activo, comprobar colisiones y quemar items afectados ---
+            if laser_active:
+                # láser(es) vertical(es) en las posiciones de `lasers` (pueden ser top o bottom)
+                for l in list(lasers):
+                    lx = l.get('x')
+                    track = l.get('track', 'top')
+                    if track == 'top':
+                        ly = CONVEYOR_TOP_Y - 5
+                    else:
+                        ly = CONVEYOR_BOTTOM_Y - 5
+                    laser_rect = pygame.Rect(lx - (LASER_WIDTH // 2), ly, LASER_WIDTH, CONVEYOR_HEIGHT + 10)
+                    for it in list(all_items):
+                        if it.state != 'OUTPUT' and it.rect.colliderect(laser_rect):
+                            # el item se quema: vuelve al inicio como 'ORIG'
+                            it.state = 'ORIG'
+                            it.update_image()
+                            it.rect.x = -ITEM_SIZE
+                            # si era el item actual, mantenemos la referencia para seguir moviéndolo
+                            if current_item is it:
+                                current_item = it
 
         # DIBUJO
         if USE_BACKGROUND_IMAGE:
@@ -382,13 +518,33 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
         meta_rect = meta_text.get_rect(center=(WIDTH // 2, 50))
         pygame.draw.rect(screen, BLACK, (meta_rect.x - 20, meta_rect.y - 10, meta_rect.width + 40, meta_rect.height + 20), 0, 5)
         screen.blit(meta_text, meta_rect)
-        
+
+        hint_text = font_small.render("Mover cinta: A/D o <- / ->", True, WHITE)
+        screen.blit(hint_text, (meta_rect.x, meta_rect.bottom + 8))
+
         conveyor_top.draw(screen)
         pygame.draw.rect(screen, RED, (GRINDER_X, CONVEYOR_TOP_Y - 5, GRINDER_WIDTH, GRINDER_HEIGHT), 0, 5)
         pygame.draw.circle(screen, BLACK, (GRINDER_X + GRINDER_WIDTH // 2, CONVEYOR_TOP_Y + CONVEYOR_HEIGHT // 2), 30)
         text_triturar = font_small.render("TRITURADORA", True, WHITE)
         screen.blit(text_triturar, (GRINDER_X + 10, CONVEYOR_TOP_Y + CONVEYOR_HEIGHT + 5))
-        
+
+        # Mostrar símbolo de advertencia mientras warning_active (en las X de los láseres)
+        if warning_active:
+            for l in lasers:
+                warn_x = l.get('x')
+                track = l.get('track', 'top')
+                if track == 'top':
+                    warn_cy = CONVEYOR_TOP_Y - 70
+                else:
+                    warn_cy = CONVEYOR_BOTTOM_Y + CONVEYOR_HEIGHT + 10
+                warn_cx = warn_x
+                tri = [(warn_cx, warn_cy), (warn_cx - 30, warn_cy + 60), (warn_cx + 30, warn_cy + 60)]
+                pygame.draw.polygon(screen, YELLOW, tri)
+                ex = font_large.render("!", True, RED)
+                screen.blit(ex, (warn_cx - ex.get_width() // 2, warn_cy + 6))
+                t = font_small.render("¡LÁSER!", True, WHITE)
+                screen.blit(t, (warn_cx - t.get_width() // 2, warn_cy + 70))
+
         conveyor_bottom.draw(screen)
         TRANSFORM_BOX_X = TRANSFORM_BOX_X_CENTERED - 10
         TRANSFORM_BOX_Y = CONVEYOR_BOTTOM_Y - 10
@@ -404,11 +560,11 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
                 screen.blit(text_hold, (TRANSFORM_BOX_X + 20, TRANSFORM_BOX_Y + TRANSFORM_BOX_H // 2 - text_hold.get_height() // 2))
             else:
                 time_ratio = (pygame.time.get_ticks() - transform_start_time) / TRANSFORM_TIME
-                if time_ratio < 0.5: 
+                if time_ratio < 0.5:
                     cover_height_draw = int(time_ratio * 2 * TRANSFORM_BOX_H)
-                elif time_ratio >= 0.5 and time_ratio < 0.8: 
+                elif time_ratio >= 0.5 and time_ratio < 0.8:
                     cover_height_draw = TRANSFORM_BOX_H
-                else: 
+                else:
                     cover_height_draw = int((1.0 - time_ratio) * 5 * TRANSFORM_BOX_H)
                 pygame.draw.rect(screen, BLACK, (TRANSFORM_BOX_X + 10, TRANSFORM_BOX_Y, TRANSFORM_BOX_W, cover_height_draw))
 
@@ -434,6 +590,20 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
         for p in particles:
             p.draw(screen)
 
+        # Dibujar rayo láser (vertical) si está activo
+        if laser_active:
+            laser_h = CONVEYOR_HEIGHT + 10
+            laser_surf = pygame.Surface((LASER_WIDTH, laser_h), pygame.SRCALPHA)
+            laser_surf.fill((255, 0, 0, 160))
+            for l in lasers:
+                lx = l.get('x')
+                track = l.get('track', 'top')
+                if track == 'top':
+                    ly = CONVEYOR_TOP_Y - 5
+                else:
+                    ly = CONVEYOR_BOTTOM_Y - 5
+                screen.blit(laser_surf, (lx - (LASER_WIDTH // 2), ly))
+
         pygame.display.flip()
 
         # Manejo de finalización
@@ -448,15 +618,17 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
 
     return "siguiente"
 
+
 if __name__ == '__main__':
     accion = "iniciar"
     if 'screen' not in locals():
-         pygame.init()
-         WIDTH, HEIGHT = 1540, 800
-         screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.init()
+        WIDTH, HEIGHT = 1540, 800
+        screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
     while accion not in ["salir_juego", "salir_menu"]:
         if accion == "iniciar" or accion == "reiniciar":
             accion = run_level3(screen=screen)
     pygame.quit()
     sys.exit()
+    # end main
