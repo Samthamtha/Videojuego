@@ -5,6 +5,8 @@ import math
 from pathlib import Path
 from pause import mostrar_menu_pausa
 from victory_menu import mostrar_menu_victoria, mostrar_menu_derrota
+# Import tutorial for level 2
+from tutorial_nivel2 import mostrar_tutorial_nivel2
 from translations import get_text
 
 # ================== RUTAS ROBUSTAS ==================
@@ -284,6 +286,15 @@ def run_level2(dificultad, idioma, screen):
                 OBJETOS_IMGS_LOADED[obj_name][state] = load_image(
                     filename, OBJETO_DISPLAY_SIZE, fallback_color=(*color, 200)
                 )
+
+    # Mostrar tutorial del nivel 2 antes de empezar, usando el fondo del nivel (opaco)
+    try:
+        tut_res = mostrar_tutorial_nivel2(screen, FONDO_NIVEL2)
+        if tut_res == "salir_juego":
+            return "salir_juego"
+    except Exception as e:
+        # Si falla el tutorial, continuar sin bloquear el nivel
+        print(f"Advertencia: fallo al mostrar tutorial nivel 2: {e}")
 
     vidas = 3
     tiempo_total = 60.0
