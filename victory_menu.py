@@ -51,6 +51,11 @@ def mostrar_menu_victoria(screen, nivel_actual):
     
     # Animación
     tiempo_animacion = 0
+    # Limpiar eventos previos para evitar selectores residuales
+    try:
+        pygame.event.clear()
+    except Exception:
+        pass
     
     # Bucle del menú de victoria
     clock = pygame.time.Clock()
@@ -162,10 +167,22 @@ def mostrar_menu_victoria(screen, nivel_actual):
                     opcion_seleccionada = OPCIONES[seleccion_idx].lower()
                     
                     if "siguiente" in opcion_seleccionada:
+                        try:
+                            pygame.event.clear()
+                        except Exception:
+                            pass
                         return "siguiente"
                     elif "reintentar" in opcion_seleccionada:
+                        try:
+                            pygame.event.clear()
+                        except Exception:
+                            pass
                         return "reintentar"
                     elif "salir" in opcion_seleccionada:
+                        try:
+                            pygame.event.clear()
+                        except Exception:
+                            pass
                         return "salir"
 
 
@@ -206,6 +223,11 @@ def mostrar_menu_derrota(screen):
     
     # Bucle del menú
     clock = pygame.time.Clock()
+    # Limpiar eventos previos al mostrar el menú de derrota
+    try:
+        pygame.event.clear()
+    except Exception:
+        pass
     while True:
         # Redibujar fondo y overlay
         screen.blit(fondo_nivel, (0, 0))
@@ -293,6 +315,14 @@ def mostrar_menu_derrota(screen):
                     opcion_seleccionada = OPCIONES[seleccion_idx].lower()
                     
                     if "reintentar" in opcion_seleccionada:
+                        try:
+                            pygame.event.clear()
+                        except Exception:
+                            pass
                         return "reintentar"
                     elif "salir" in opcion_seleccionada:
+                        try:
+                            pygame.event.clear()
+                        except Exception:
+                            pass
                         return "salir"
