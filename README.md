@@ -64,11 +64,11 @@ El nivel 3 enseña cómo los objetos "viejos" pueden tener una nueva vida y prop
 
 ### Etapa FINAL: La Cinta Transformadora (Reutilizar / Rediseñar)
 
-El nivel final enseña cómo los objetos "viejos" pueden tener una nueva vida y propósito.
+El nivel final enseña cómo el jugador es el vencedor de su nemesis demostrando que puedes vencer tus mayores miedos.
 
-* **Mecánica:** Es un nivel de ritmo (Quick Time Event - QTE). Una cinta transportadora mueve diferentes objetos (botella de plastico, periodico, lata de aluminio).
-* **Objetivo:** Los objetos pasan por un lugar determinado ("zona de transformación").
-* **Acción:** Justo en ese momento, una tecla aleatoria aparece en pantalla. El jugador debe presionar la tecla indicada en el instante preciso para transformar el objeto en algo nuevo y útil.
+* **Mecánica:** Es un nivel donde tu nemesis aparece a detenerte y que no logres tu objetivo, es un enfrentamiento facil para el usuario.
+* **Objetivo:** Su objetivo es que el jugador se supere y sienta que pudo lograr luchar contra sus miedos 
+* **Acción:** Te moveras y golpearas al nemesis para derrotarlo, este intentara golpearte con lazeres.
 * * **Esenario para la etapa 3:**
 
 <img width="1919" height="954" alt="image" src="https://github.com/user-attachments/assets/26dd74ce-dee0-43b9-9513-c462840057a9" />
@@ -99,7 +99,52 @@ La encuesta se centrará en responder las siguientes preguntas:
 </p>
 ---
 
-## 💻 Tecnologías Propuestas
+## 💻Instalación del Proyecto
+
+Sigue estos pasos para descargar y ejecutar el videojuego EcoGuardianes: Misión ODS 12 en tu equipo.
+1. Requisitos Previos
+Asegúrate de tener instalado Python en tu sistema. Se recomienda la versión 3.x.
+    Verificar Python: Abre tu terminal o símbolo del sistema y escribe:
+    Bash
+    python --version
+    python3 --version
+2. Clonar el Repositorio
+Primero, descarga el código fuente del juego utilizando git.
+    Abre tu terminal.
+    Clona el repositorio (asumiendo que está alojado en GitHub u otro servicio similar):
+    Bash
+    git clone [https://github.com/Samthamtha/Videojuego.git]
+    cd EcoGuardianes
+    (Nota: Reemplaza [https://github.com/Samthamtha/Videojuego.git] con la URL real de tu proyecto).
+3. Instalar Dependencias
+El juego requiere la librería Pygame para funcionar. Es una buena práctica usar un entorno virtual para aislar las dependencias del proyecto.
+A. Crear un Entorno Virtual
+Bash
+# Crea el entorno virtual (llamado 'venv' por convención)
+python3 -m venv venv
+# Activa el entorno virtual
+# En macOS/Linux:
+source venv/bin/activate
+# En Windows (Símbolo del Sistema):
+.\venv\Scripts\activate
+# En Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+B. Instalar Pygame
+Una vez que el entorno virtual esté activo, instala Pygame usando pip:
+Bash
+pip install pygame
+    Alternativa: Si tienes un archivo requirements.txt que lista las dependencias, simplemente ejecuta:
+    Bash
+    pip install -r requirements.txt
+4. Ejecutar el Juego
+Finalmente, ejecuta el archivo principal del juego para empezar a jugar.
+Bash
+python main.py
+# o si el archivo principal tiene otro nombre, por ejemplo:
+# python juego_ecoguardianes.py
+🎉 ¡Listo! El juego debería iniciarse en una nueva ventana.
+
+---
 
 * **Lenguaje de Programación:** Python
 * **Diseño de Gráficos:** Libresprite
