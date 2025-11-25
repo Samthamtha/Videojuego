@@ -43,11 +43,12 @@ def _load_sound(path):
 
 
 class EtapaFinal:
-	def __init__(self, screen, dificultad=None):
+	def __init__(self, screen, dificultad=None, idioma=None):
 		self.screen = screen
 		self.clock = pygame.time.Clock()
 		self.fps = FPS
 		self.dificultad = dificultad
+		self.idioma = idioma if idioma else "Español"
 
 		# Assets
 		self.bg = load_image_safe(os.path.join(ASSET_DIR, 'fondo_final.jpg'), (WIDTH, HEIGHT), (18,18,28))
@@ -203,7 +204,7 @@ class EtapaFinal:
 				if event.key == pygame.K_ESCAPE:
 					# Open pause menu and react to its selection
 					try:
-						accion = mostrar_menu_pausa(self.screen, HEIGHT, WIDTH)
+						accion = mostrar_menu_pausa(self.screen, HEIGHT, WIDTH, self.idioma)
 					except Exception:
 						# Fallback: if pause menu fails, exit to menu
 						accion = 'salir'
@@ -592,6 +593,11 @@ class EtapaFinal:
 	
 	def draw_tutorial(self):
 		"""Dibuja el tutorial inicial"""
+		from translations import get_text
+		
+		# Determinar idioma (si está disponible)
+		idioma = getattr(self, 'idioma', 'Español')
+		
 		# Fondo semitransparente
 		overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
 		overlay.fill((0, 0, 0, 200))
@@ -609,30 +615,49 @@ class EtapaFinal:
 		pygame.draw.rect(panel, (255, 255, 255, 255), panel.get_rect(), 4, border_radius=15)
 		self.screen.blit(panel, (panel_x, panel_y))
 		
-		# Título
-		title = self.font_large.render("TUTORIAL - COMBATE FINAL", True, (255, 220, 100))
+		# Título (traducido)
+		title_text = "TUTORIAL - COMBATE FINAL" if idioma == "Español" else "TUTORIAL - FINAL BATTLE"
+		title = self.font_large.render(title_text, True, (255, 220, 100))
 		self.screen.blit(title, (panel_x + panel_w // 2 - title.get_width() // 2, panel_y + 30))
 		
-		# Instrucciones
+		# Instrucciones (traducidas)
 		y_offset = 100
 		line_height = 50
 		
-		instrucciones = [
-			"MOVIMIENTO:",
-			"  A / ← : Mover a la izquierda",
-			"  D / → : Mover a la derecha",
-			"  W / ↑ / Espacio : Saltar",
-			"",
-			"ATAQUE:",
-			"  Enter : Atacar al gato (debes estar cerca)",
-			"",
-			"ADVERTENCIAS:",
-			"  ⚠️ Evita los láseres rojos del gato",
-			"  ⚠️ Los láseres quitan 2 vidas",
-			"  ⚠️ Mantente en movimiento para esquivar",
-			"",
-			"Presiona cualquier tecla para comenzar..."
-		]
+		if idioma == "Inglés":
+			instrucciones = [
+				"MOVEMENT:",
+				"  A / ← : Move left",
+				"  D / → : Move right",
+				"  W / ↑ / Space : Jump",
+				"",
+				"ATTACK:",
+				"  Enter : Attack the cat (you must be close)",
+				"",
+				"WARNINGS:",
+				"  ⚠️ Avoid the cat's red lasers",
+				"  ⚠️ Lasers take 2 lives",
+				"  ⚠️ Keep moving to dodge",
+				"",
+				"Press any key to start..."
+			]
+		else:
+			instrucciones = [
+				"MOVIMIENTO:",
+				"  A / ← : Mover a la izquierda",
+				"  D / → : Mover a la derecha",
+				"  W / ↑ / Espacio : Saltar",
+				"",
+				"ATAQUE:",
+				"  Enter : Atacar al gato (debes estar cerca)",
+				"",
+				"ADVERTENCIAS:",
+				"  ⚠️ Evita los láseres rojos del gato",
+				"  ⚠️ Los láseres quitan 2 vidas",
+				"  ⚠️ Mantente en movimiento para esquivar",
+				"",
+				"Presiona cualquier tecla para comenzar..."
+			]
 		
 		for i, texto in enumerate(instrucciones):
 			if texto.startswith("  "):
@@ -689,7 +714,7 @@ def run_etapa_final(dificultad=None, idioma=None, screen=None):
 			pass
 
 	try:
-		etapa = EtapaFinal(screen, dificultad)
+		etapa = EtapaFinal(screen, dificultad, idioma)
 	except Exception:
 		import traceback
 		traceback.print_exc()

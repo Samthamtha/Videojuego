@@ -314,7 +314,20 @@ def draw_button_prompt(screen, text, x, y, key_char=None, pulse=True):
 
 
 def run_level3(dificultad=None, idioma=None, screen=screen):
-    METAS_TRITURAR = 5
+    # Ajustar objetivo según dificultad
+    if dificultad:
+        dif = str(dificultad).lower()
+        if 'principiante' in dif or 'princip' in dif:
+            METAS_TRITURAR = 3
+        elif 'inter' in dif:
+            METAS_TRITURAR = 4
+        elif 'prof' in dif or 'profe' in dif or 'profesional' in dif:
+            METAS_TRITURAR = 5
+        else:
+            METAS_TRITURAR = 3  # Por defecto principiante
+    else:
+        METAS_TRITURAR = 3  # Por defecto principiante
+    
     contador_triturados = 0
     juego_finalizado = False
     current_item = None
@@ -415,7 +428,7 @@ def run_level3(dificultad=None, idioma=None, screen=screen):
 
                 if event.key == pygame.K_ESCAPE:
                     pygame.event.clear()
-                    accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH)
+                    accion = mostrar_menu_pausa(screen, HEIGHT, WIDTH, idioma)
                     if accion == "salir_juego":
                         return "salir_juego"
                     elif accion == "reiniciar":

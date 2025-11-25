@@ -75,9 +75,11 @@ def wrap_text(text, font, max_width):
     return lines
 
 # --- Función del tutorial ---
-def mostrar_tutorial(screen, fondo_nivel, metas=None):
+def mostrar_tutorial(screen, fondo_nivel, metas=None, idioma="Español"):
     """Muestra el tutorial. Devuelve True si termina normalmente,
        devuelve 'salir_juego' si el usuario cierra la ventana."""
+    from translations import get_text
+    
     WIDTH, HEIGHT = screen.get_size()
     clock = pygame.time.Clock()
     FPS = 60
@@ -121,10 +123,13 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
     small_font = pygame.font.SysFont(None, 30)
 
     # Pre-render title + instruction with a soft shadow for a playful look
-    TITLE_TEXT = "CONTROLES"
+    TITLE_TEXT = get_text("CONTROLES", idioma) if get_text("CONTROLES", idioma) != "CONTROLES" else ("CONTROLS" if idioma == "Inglés" else "CONTROLES")
+    INSTR_TEXT = get_text("Usa estos botones para arrastrar la basura", idioma) if get_text("Usa estos botones para arrastrar la basura", idioma) != "Usa estos botones para arrastrar la basura" else ("Use these buttons to drag the trash" if idioma == "Inglés" else "Usa estos botones para arrastrar la basura")
+    SKIP_TEXT = get_text("SALTAR", idioma) if get_text("SALTAR", idioma) != "SALTAR" else ("SKIP" if idioma == "Inglés" else "SALTAR")
+    HINT_TEXT = get_text("Usa ← y → para mover el bote", idioma) if get_text("Usa ← y → para mover el bote", idioma) != "Usa ← y → para mover el bote" else ("Use ← and → to move the bin" if idioma == "Inglés" else "Usa ← y → para mover el bote")
+    
     title_shadow = title_font.render(TITLE_TEXT, True, (40, 40, 40))
     title_surf = title_font.render(TITLE_TEXT, True, (255, 230, 80))
-    INSTR_TEXT = "Usa estos botones para arrastrar la basura"
     instr_shadow = instr_font.render(INSTR_TEXT, True, (30, 30, 30))
     instr_surf = instr_font.render(INSTR_TEXT, True, (255, 220, 60))
     skip_button_rect = pygame.Rect(WIDTH - 200, 22, 160, 56)
@@ -242,12 +247,12 @@ def mostrar_tutorial(screen, fondo_nivel, metas=None):
         button_color = (255, 215, 0) if skip_button_rect.collidepoint(mouse_pos) else (240, 240, 240)
         pygame.draw.rect(screen, button_color, skip_button_rect, border_radius=12)
         pygame.draw.rect(screen, (0,0,0), skip_button_rect, 4, border_radius=12)
-        skip_text = skip_font.render("SALTAR", True, (0,0,0))
+        skip_text = skip_font.render(SKIP_TEXT, True, (0,0,0))
         text_pos = skip_text.get_rect(center=skip_button_rect.center)
         screen.blit(skip_text, text_pos)
 
         # Small hint under keys
-        hint = small_font.render("Usa ← y → para mover el bote", True, (255,255,255))
+        hint = small_font.render(HINT_TEXT, True, (255,255,255))
         screen.blit(hint, (WIDTH//2 - hint.get_width()//2, bin_y + bin_img.get_height() + 12))
 
         pygame.display.flip()

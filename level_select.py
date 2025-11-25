@@ -74,17 +74,42 @@ def draw_button_long(screen, rect, text, is_active, base_color=COLOR_BUTTON_BASE
 def draw_stage_quad(screen, rect, text_short, is_selected):
     """Dibuja los cuadros seleccionables de la parte superior (Etapa 1, 2...)."""
     
-    # 1. Fondo
-    color_fondo = COLOR_CUADRO_SELECCIONADO if is_selected else COLOR_PANEL_INFO
-    pygame.draw.rect(screen, color_fondo, rect, border_radius=5)
-
-    # 2. Borde (blanco si está seleccionado)
-    borde_color = COLOR_TEXT_NORMAL if is_selected else COLOR_TEXT_DARK
-    pygame.draw.rect(screen, borde_color, rect, 3, border_radius=5)
+    # 1. Sombra para efecto 3D
+    shadow_rect = rect.copy()
+    shadow_rect.x += 4
+    shadow_rect.y += 4
+    shadow_surf = pygame.Surface((shadow_rect.width, shadow_rect.height), pygame.SRCALPHA)
+    shadow_surf.fill((0, 0, 0, 100))
+    screen.blit(shadow_surf, shadow_rect.topleft)
     
-    # 3. Dibujar texto corto
+    # 2. Fondo con gradiente si está seleccionado
+    if is_selected:
+        # Gradiente amarillo-naranja
+        for i in range(rect.height):
+            ratio = i / rect.height
+            r = int(255 - ratio * 50)
+            g = int(200 - ratio * 30)
+            b = int(0)
+            pygame.draw.line(screen, (r, g, b), 
+                            (rect.x, rect.y + i), 
+                            (rect.x + rect.width, rect.y + i))
+    else:
+        color_fondo = COLOR_PANEL_INFO
+        pygame.draw.rect(screen, color_fondo, rect, border_radius=5)
+
+    # 3. Borde (blanco grueso si está seleccionado)
+    borde_color = COLOR_TEXT_NORMAL if is_selected else COLOR_TEXT_DARK
+    borde_width = 4 if is_selected else 2
+    pygame.draw.rect(screen, borde_color, rect, borde_width, border_radius=5)
+    
+    # 4. Dibujar texto corto con efecto de brillo si está seleccionado
     text_color = COLOR_TEXT_DARK if is_selected else COLOR_TEXT_NORMAL
     text_surface = FONT_ETAPA.render(text_short, True, text_color)
+    if is_selected:
+        # Efecto de brillo
+        glow_surface = FONT_ETAPA.render(text_short, True, (255, 255, 200))
+        screen.blit(glow_surface, (rect.centerx - text_surface.get_width() // 2 + 1, 
+                                  rect.centery - text_surface.get_height() // 2 + 1))
     text_rect = text_surface.get_rect(centerx=rect.centerx, centery=rect.centery)
     screen.blit(text_surface, text_rect)
 
@@ -167,8 +192,23 @@ def draw_difficulty_control(screen, rect, difficulty, is_active):
 def run_level_select(screen, dificultad_actual, idioma): 
     # La inicialización de fuentes ya se hizo arriba.
     
+    # Cargar sonidos (como en el menú principal)
+    sonido_seleccion = None
+    try:
+        pygame.mixer.init()
+        sonido_seleccion = pygame.mixer.Sound("sonido/boton_selec.mp3")
+        from settings import volumen_efectos
+        sonido_seleccion.set_volume(volumen_efectos)
+    except (pygame.error, AttributeError) as e:
+        print(f"Advertencia: No se pudo cargar sonido de selección: {e}")
+        sonido_seleccion = None
+    
     clock = pygame.time.Clock()
     screen_width, screen_height = screen.get_size()
+    
+    # Variable para rastrear la selección anterior y reproducir sonido solo cuando cambia
+    previous_etapa_index = 0
+    previous_main_button = 0
     
     # --- Cargar imagen de fondo y Overlay ---
     background_image = None
@@ -262,26 +302,42 @@ def run_level_select(screen, dificultad_actual, idioma):
                 # --- NAVEGACIÓN VERTICAL (UP/DOWN & W/S) ---
                 if event.key in (pygame.K_UP, pygame.K_w):
                     selected_main_button = (selected_main_button - 1) % len(main_button_rects)
+                    if selected_main_button != previous_main_button and sonido_seleccion:
+                        sonido_seleccion.play()
+                    previous_main_button = selected_main_button
                 
                 elif event.key in (pygame.K_DOWN, pygame.K_s):
                     selected_main_button = (selected_main_button + 1) % len(main_button_rects)
+                    if selected_main_button != previous_main_button and sonido_seleccion:
+                        sonido_seleccion.play()
+                    previous_main_button = selected_main_button
                 
                 # --- NAVEGACIÓN HORIZONTAL (LEFT/RIGHT & A/D) ---
                 elif event.key in (pygame.K_LEFT, pygame.K_a):
                     if selected_main_button == 1: # Si estamos en Dificultad
                         # Cambia dificultad: Mueve hacia la izquierda (dificultad más fácil)
                         selected_difficulty_index = (selected_difficulty_index - 1) % len(dificultad)
+                        if sonido_seleccion:
+                            sonido_seleccion.play()
                     else: # Si estamos en JUGAR o VOLVER, cambia la etapa
                         # Cambia etapa: Mueve hacia la izquierda
                         selected_etapa_index = (selected_etapa_index - 1) % len(ETAPAS)
+                        if selected_etapa_index != previous_etapa_index and sonido_seleccion:
+                            sonido_seleccion.play()
+                        previous_etapa_index = selected_etapa_index
                 
                 elif event.key in (pygame.K_RIGHT, pygame.K_d):
                     if selected_main_button == 1: # Si estamos en Dificultad
                         # Cambia dificultad: Mueve hacia la derecha (dificultad más avanzada)
                         selected_difficulty_index = (selected_difficulty_index + 1) % len(dificultad)
+                        if sonido_seleccion:
+                            sonido_seleccion.play()
                     else: # Si estamos en JUGAR o VOLVER, cambia la etapa
                         # Cambia etapa: Mueve hacia la derecha
                         selected_etapa_index = (selected_etapa_index + 1) % len(ETAPAS)
+                        if selected_etapa_index != previous_etapa_index and sonido_seleccion:
+                            sonido_seleccion.play()
+                        previous_etapa_index = selected_etapa_index
 
                 # --- SELECCIÓN (ENTER) ---
                 elif event.key == pygame.K_RETURN:

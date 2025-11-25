@@ -25,7 +25,7 @@ El objetivo es concienciar sobre la gestión de residuos y el consumo responsabl
 
 El juego se compone de tres minijuegos principales, cada uno enfocado en una "R" diferente.
 
-### Etapa 1: ¡El Río Contaminado! (Reducir / Reciclar)
+### Etapa 1: ¡El Río Contaminado! (Reducir / Reciclar / )
 
 En este nivel, el jugador debe limpiar un río clasificando la basura que cae.
 
@@ -37,7 +37,7 @@ En este nivel, el jugador debe limpiar un río clasificando la basura que cae.
     * **¡Giro clave!** Cuando un bote de basura se completa (alcanza su meta), se bloquea, deja de moverse y ya no suma más puntos. Esto incrementa el desafío al forzar al jugador a gestionar los contenedores restantes.
 * **Esenario para la etapa 1:**
 
-<img width="1916" height="963" alt="Captura de pantalla 2025-11-23 174418" src="https://github.com/user-attachments/assets/e96d7739-5643-4bfb-9e39-65f5008269d7" />
+![Texto alternativo](img/rio.png)
 
 ### Etapa 2: El Taller de Reparaciones (Reparar / Renovar / Recuperar))
 
@@ -46,32 +46,17 @@ Este nivel se enfoca en la importancia de reparar objetos en lugar de desecharlo
 * **Mecánica:** Aparece un objeto roto en el centro de la pantalla.
 * **Objetivo:** A un lado, el jugador tiene un panel con las herramientas necesarias (martillo, destornillador, pegamento, etc.). Debe seleccionar la herramienta correcta y aplicarla en la zona dañada.
 * **Desafío:** Un **"enemigo distractor"** aparecerá en pantalla para interrumpir al jugador y evitar que complete su tarea a tiempo (ej. tapando la visión(principiante y intermedio), invirtiendo los controles del juego(nivel profecional)).
-* * **Esenario para la etapa 2:**
+* * **Esenario para la etapa 1:**
 
-<img width="1896" height="947" alt="Captura de pantalla 2025-11-23 174603" src="https://github.com/user-attachments/assets/76330cb4-e3fa-4f66-85c2-6bf5fee27802" />
+![Imagen de WhatsApp 2025-11-13 a las 21 37 58_cb72fc8f](https://github.com/user-attachments/assets/dbd06f9a-6dae-4463-9057-6dd546a4f958)
 
 ### Etapa 3: La Cinta Transformadora (Reutilizar / Rediseñar)
 
-El nivel 3 enseña cómo los objetos "viejos" pueden tener una nueva vida y propósito.
+El nivel final enseña cómo los objetos "viejos" pueden tener una nueva vida y propósito.
 
 * **Mecánica:** Es un nivel de ritmo (Quick Time Event - QTE). Una cinta transportadora mueve diferentes objetos (botella de plastico, periodico, lata de aluminio).
-* **Objetivo:** Los objetos pasan por un lugar determinado ("zona de transformación") siendo el jugador el que mueve el objeto.
+* **Objetivo:** Los objetos pasan por un lugar determinado ("zona de transformación").
 * **Acción:** Justo en ese momento, una tecla aleatoria aparece en pantalla. El jugador debe presionar la tecla indicada en el instante preciso para **transformar el objeto** en algo nuevo y útil.
-* **Desafio:** El enemigo sera el gato queriendo evitar tu avance volando en los aires y lanzando rayos para que te atrase y si te acerta se burla de ti, cada dificultad aumenta la velocidad de aparicion y en el profecional seran 3. 
-* * **Esenario para la etapa 3:**
-
-<img width="1819" height="856" alt="image" src="https://github.com/user-attachments/assets/3906d626-b9ac-47e9-95d0-53d9695510d7" />
-
-### Etapa FINAL: La Cinta Transformadora (Reutilizar / Rediseñar)
-
-El nivel final enseña cómo el jugador es el vencedor de su nemesis demostrando que puedes vencer tus mayores miedos.
-
-* **Mecánica:** Es un nivel donde tu nemesis aparece a detenerte y que no logres tu objetivo, es un enfrentamiento facil para el usuario.
-* **Objetivo:** Su objetivo es que el jugador se supere y sienta que pudo lograr luchar contra sus miedos 
-* **Acción:** Te moveras y golpearas al nemesis para derrotarlo, este intentara golpearte con lazeres.
-* * **Esenario para la etapa 3:**
-
-<img width="1919" height="954" alt="image" src="https://github.com/user-attachments/assets/26dd74ce-dee0-43b9-9513-c462840057a9" />
 
 ---
 
@@ -99,51 +84,7 @@ La encuesta se centrará en responder las siguientes preguntas:
 </p>
 ---
 
-## 💻Instalación del Proyecto
-
-Sigue estos pasos para descargar y ejecutar el videojuego EcoGuardianes: Misión ODS 12 en tu equipo.
-1. Requisitos Previos
-Asegúrate de tener instalado Python en tu sistema. Se recomienda la versión 3.x.
-    Verificar Python: Abre tu terminal o símbolo del sistema y escribe:
-    Bash
-    python --version
-    python3 --version
-2. Clonar el Repositorio
-Primero, descarga el código fuente del juego utilizando git.
-    Abre tu terminal.
-    Clona el repositorio (asumiendo que está alojado en GitHub u otro servicio similar):
-    Bash
-    git clone [https://github.com/Samthamtha/Videojuego.git]
-    cd EcoGuardianes
-3. Instalar Dependencias
-El juego requiere la librería Pygame para funcionar. Es una buena práctica usar un entorno virtual para aislar las dependencias del proyecto.
-A. Crear un Entorno Virtual
-Bash
-# Crea el entorno virtual (llamado 'venv' por convención)
-python3 -m venv venv
-# Activa el entorno virtual
-# En macOS/Linux:
-source venv/bin/activate
-# En Windows (Símbolo del Sistema):
-.\venv\Scripts\activate
-# En Windows (PowerShell):
-.\venv\Scripts\Activate.ps1
-B. Instalar Pygame
-Una vez que el entorno virtual esté activo, instala Pygame usando pip:
-Bash
-pip install pygame
-    Alternativa: Si tienes un archivo requirements.txt que lista las dependencias, simplemente ejecuta:
-    Bash
-    pip install -r requirements.txt
-4. Ejecutar el Juego
-Finalmente, ejecuta el archivo principal del juego para empezar a jugar.
-Bash
-python main.py
-# o si el archivo principal tiene otro nombre, por ejemplo:
-# python juego_ecoguardianes.py
-🎉 ¡Listo! El juego debería iniciarse en una nueva ventana.
-
----
+## 💻 Tecnologías Propuestas
 
 * **Lenguaje de Programación:** Python
 * **Diseño de Gráficos:** Libresprite

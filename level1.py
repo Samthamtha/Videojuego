@@ -304,7 +304,7 @@ def run_level1(dificultad, idioma, screen):
         fondo.fill(BLUE)
 
     # Tutorial
-    resultado_tutorial = tutorial_nivel1.mostrar_tutorial(screen, fondo)
+    resultado_tutorial = tutorial_nivel1.mostrar_tutorial(screen, fondo, idioma=idioma)
     if resultado_tutorial == "salir_juego":
         return "salir_juego"
 
@@ -630,9 +630,9 @@ def run_level1(dificultad, idioma, screen):
         # Finalización
         if juego_finalizado:
             if PUNTOS <= 0 and tiempo_restante > 0:
-                accion = mostrar_menu_derrota(screen)
+                accion = mostrar_menu_derrota(screen, idioma)
             elif tiempo_restante <= 0 and not all(CONTADOR[tipo] >= METAS[tipo] for tipo in METAS):
-                accion = mostrar_menu_derrota(screen)
+                accion = mostrar_menu_derrota(screen, idioma)
             else:
                 accion = mostrar_menu_victoria(screen, "level1")
 

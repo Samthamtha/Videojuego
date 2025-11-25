@@ -99,7 +99,9 @@ def mostrar_menu_pausa(screen, alto, ancho, idioma="Español"):
             texto_render = opcion
 
             # Volume option shows a graphical slider
-            if "Volumen" in opcion:
+            # Verificar usando la clave de traducción en lugar del texto traducido
+            volumen_key = get_text("Volumen", idioma)
+            if volumen_key in opcion or "Volumen" in opcion or "Volume" in opcion:
                 texto_render = opcion
                 text_surf = pygame.font.Font(None, 36).render(texto_render, True, text_color)
                 panel_surf.blit(text_surf, (110, y))
@@ -126,7 +128,8 @@ def mostrar_menu_pausa(screen, alto, ancho, idioma="Español"):
 
         # footer hint
         hint_font = pygame.font.Font(None, 28)
-        hint = hint_font.render(get_text("Usa ↑/↓ para moverte, ENTER para seleccionar", idioma), True, (200, 200, 200))
+        hint_text = get_text("Usa ↑↓ o W/S para navegar, ENTER para seleccionar", idioma)
+        hint = hint_font.render(hint_text, True, (200, 200, 200))
         screen.blit(hint, (panel_x + (panel_w - hint.get_width()) // 2, panel_y + panel_h - 44))
 
         pygame.display.flip()
@@ -144,7 +147,8 @@ def mostrar_menu_pausa(screen, alto, ancho, idioma="Español"):
                     seleccion_idx = (seleccion_idx - 1) % len(OPCIONES)
 
                 # control de volumen cuando la opción volumen está seleccionada
-                elif "Volumen" in OPCIONES[seleccion_idx]:
+                # Usar el índice en lugar de comparar texto traducido
+                elif seleccion_idx == 1:  # "Volumen" es siempre el índice 1
                     volumen_modificado = False
                     if evento.key == pygame.K_LEFT or evento.key == pygame.K_a:
                         volumen_actual = max(0, volumen_actual - 5)
@@ -159,12 +163,12 @@ def mostrar_menu_pausa(screen, alto, ancho, idioma="Español"):
                             pass
 
                 elif evento.key == pygame.K_RETURN:
-                    opcion_seleccionada = OPCIONES[seleccion_idx].lower()
-                    if "reanudar" in opcion_seleccionada:
+                    # Usar el índice en lugar de comparar texto traducido
+                    if seleccion_idx == 0:  # "Reanudar" / "Resume"
                         return "reanudar"
-                    elif "reiniciar" in opcion_seleccionada:
+                    elif seleccion_idx == 2:  # "Reiniciar" / "Restart"
                         return "reiniciar"
-                    elif "salir" in opcion_seleccionada:
+                    elif seleccion_idx == 3:  # "Salir" / "Exit"
                         return "salir"
 
                 elif evento.key == pygame.K_ESCAPE or evento.key == pygame.K_r:

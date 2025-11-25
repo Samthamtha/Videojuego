@@ -681,7 +681,7 @@ def run_level2(dificultad, idioma, screen):
                 elif accion == "salir":
                     return "salir_menu"
             else:
-                accion = mostrar_menu_derrota(screen)
+                accion = mostrar_menu_derrota(screen, idioma)
                 if accion == "reintentar":
                     return "reiniciar"
                 elif accion == "salir":

@@ -188,19 +188,41 @@ def mostrar_menu_victoria(screen, nivel_actual):
 
 # ==================== FUNCIÓN PARA MENÚ DE DERROTA (GAME OVER) ====================
 
-def mostrar_menu_derrota(screen):
+def mostrar_menu_derrota(screen, idioma="Español"):
     """
-    Muestra el menú de derrota/game over.
+    Muestra el menú de derrota con mensajes positivos y alentadores.
     
     Parámetros:
         screen: superficie de pygame donde se dibuja
+        idioma: idioma actual del juego ("Español" o "Inglés")
     
     Devuelve:
         "reintentar" - Volver a jugar el nivel
         "salir" - Volver al menú principal
     """
+    import random
+    from translations import get_text
     
-    OPCIONES = ["Reintentar", "Salir"]
+    # Mensajes positivos y alentadores
+    mensajes_espanol = [
+        "¡Sigue intentando! ¡Tú puedes lograrlo!",
+        "¡No te rindas! ¡Vuelve a intentarlo!",
+        "¡Cada intento te hace mejor! ¡Sigue adelante!"
+    ]
+    
+    mensajes_ingles = [
+        "Keep trying! You can do it!",
+        "Don't give up! Try again!",
+        "Every attempt makes you better! Keep going!"
+    ]
+    
+    # Seleccionar mensaje aleatorio
+    if idioma == "Inglés":
+        mensaje_aleatorio = random.choice(mensajes_ingles)
+        OPCIONES = ["Retry", "Exit"]
+    else:
+        mensaje_aleatorio = random.choice(mensajes_espanol)
+        OPCIONES = ["Reintentar", "Salir"]
     
     ancho, alto = screen.get_size()
     
@@ -235,7 +257,7 @@ def mostrar_menu_derrota(screen):
         
         # ==================== PANEL DE DERROTA ====================
         panel_w = 700
-        panel_h = 400
+        panel_h = 450  # Aumentado para acomodar el mensaje positivo
         panel_x = ancho // 2 - panel_w // 2
         panel_y = alto // 2 - panel_h // 2
         
@@ -249,20 +271,38 @@ def mostrar_menu_derrota(screen):
         pygame.draw.rect(shadow_surface, (0, 0, 0, 150), shadow_surface.get_rect(), border_radius=15)
         screen.blit(shadow_surface, shadow_rect.topleft)
         
-        # Panel principal
+        # Panel principal con colores más positivos
         panel_surface = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-        pygame.draw.rect(panel_surface, (255, 255, 255, 250), panel_surface.get_rect(), border_radius=15)
-        pygame.draw.rect(panel_surface, (200, 0, 0), panel_surface.get_rect(), 5, border_radius=15)  # Borde rojo
+        # Fondo con gradiente amarillo/naranja positivo
+        for i in range(panel_h):
+            ratio = i / panel_h
+            r = int(255 - ratio * 30)
+            g = int(220 - ratio * 20)
+            b = int(100 - ratio * 50)
+            pygame.draw.line(panel_surface, (r, g, b), 
+                            (0, i), (panel_w, i))
+        pygame.draw.rect(panel_surface, (255, 200, 0), panel_surface.get_rect(), 5, border_radius=15)  # Borde dorado
         screen.blit(panel_surface, panel_rect.topleft)
         
-        # ==================== TÍTULO "GAME OVER" ====================
-        titulo_texto = titulo_font.render("GAME OVER", True, (200, 0, 0))
+        # ==================== TÍTULO POSITIVO ====================
+        if idioma == "Inglés":
+            titulo_text = "Keep Going!"
+        else:
+            titulo_text = "¡Sigue Adelante!"
+        
+        titulo_texto = titulo_font.render(titulo_text, True, (255, 140, 0))
         titulo_rect = titulo_texto.get_rect(centerx=ancho // 2, top=panel_y + 30)
         screen.blit(titulo_texto, titulo_rect)
         
+        # ==================== MENSAJE ALEATORIO POSITIVO ====================
+        mensaje_font = pygame.font.Font(None, 42)
+        mensaje_surf = mensaje_font.render(mensaje_aleatorio, True, (50, 50, 50))
+        mensaje_rect = mensaje_surf.get_rect(centerx=ancho // 2, top=titulo_rect.bottom + 40)
+        screen.blit(mensaje_surf, mensaje_rect)
+        
         # Línea decorativa
-        linea_y = titulo_rect.bottom + 20
-        pygame.draw.line(screen, (200, 0, 0), 
+        linea_y = mensaje_rect.bottom + 30
+        pygame.draw.line(screen, (255, 180, 0), 
                         (panel_x + 50, linea_y), 
                         (panel_x + panel_w - 50, linea_y), 3)
         
@@ -280,13 +320,14 @@ def mostrar_menu_derrota(screen):
             btn_rect = pygame.Rect(btn_x, btn_y, button_width, button_height)
             
             if is_selected:
-                btn_color = (200, 0, 0)
+                # Color verde positivo para el botón seleccionado
+                btn_color = (100, 200, 100)
                 text_color = BLANCO
                 border_width = 4
             else:
-                btn_color = (220, 220, 220)
-                text_color = (0, 0, 0)
-                border_width = 3
+                btn_color = (240, 240, 240)
+                text_color = (50, 50, 50)
+                border_width = 2
             
             pygame.draw.rect(screen, btn_color, btn_rect, border_radius=10)
             pygame.draw.rect(screen, (0, 0, 0), btn_rect, border_width, border_radius=10)
@@ -312,15 +353,14 @@ def mostrar_menu_derrota(screen):
                     seleccion_idx = (seleccion_idx - 1) % len(OPCIONES)
                 
                 elif evento.key == pygame.K_RETURN:
-                    opcion_seleccionada = OPCIONES[seleccion_idx].lower()
-                    
-                    if "reintentar" in opcion_seleccionada:
+                    # Usar índice en lugar de comparar texto traducido
+                    if seleccion_idx == 0:  # Reintentar/Retry
                         try:
                             pygame.event.clear()
                         except Exception:
                             pass
                         return "reintentar"
-                    elif "salir" in opcion_seleccionada:
+                    elif seleccion_idx == 1:  # Salir/Exit
                         try:
                             pygame.event.clear()
                         except Exception:
