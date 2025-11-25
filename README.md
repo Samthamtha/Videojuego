@@ -115,7 +115,6 @@ Primero, descarga el código fuente del juego utilizando git.
     Bash
     git clone [https://github.com/Samthamtha/Videojuego.git]
     cd EcoGuardianes
-    (Nota: Reemplaza [https://github.com/Samthamtha/Videojuego.git] con la URL real de tu proyecto).
 3. Instalar Dependencias
 El juego requiere la librería Pygame para funcionar. Es una buena práctica usar un entorno virtual para aislar las dependencias del proyecto.
 A. Crear un Entorno Virtual
